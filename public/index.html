@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2196F3">
+    <meta name="description" content="Ofertas exclusivas para seu condomínio">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+    
+    <title>DealApp - Ofertas do Condomínio</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen hidden">
+        <div class="login-container">
+            <img src="/assets/icons/icon-192.png" alt="DealApp" class="logo">
+            <h1>DealApp</h1>
+            <p>Ofertas exclusivas do seu condomínio</p>
+            <button id="google-login-btn" class="btn-primary">
+                <img src="/assets/icons/google.svg" alt="Google">
+                Entrar com Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Ofertas Disponíveis</h1>
+            <div class="user-info">
+                <img id="user-photo" class="user-avatar" alt="User">
+                <button id="logout-btn" class="btn-icon">Sair</button>
+            </div>
+        </header>
+
+        <!-- Deals List -->
+        <main class="deals-container">
+            <div id="deals-list" class="deals-grid">
+                <!-- Deals serão inseridos aqui via JS -->
+            </div>
+        </main>
+
+        <!-- My Coupons Tab -->
+        <section id="coupons-section" class="hidden">
+            <h2>Meus Cupons</h2>
+            <div id="coupons-list" class="coupons-grid">
+                <!-- Cupons serão inseridos aqui -->
+            </div>
+        </section>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-tab="deals">
+                <span>🏷️</span>
+                <span>Ofertas</span>
+            </button>
+            <button class="nav-item" data-tab="coupons">
+                <span>🎫</span>
+                <span>Cupons</span>
+            </button>
+            <button class="nav-item" data-tab="profile">
+                <span>👤</span>
+                <span>Perfil</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Deal Modal -->
+    <div id="deal-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="deal-details"></div>
+            <button id="generate-coupon-btn" class="btn-primary">
+                Gerar Cupom
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module" src="/js/firebase-config.js"></script>
+    <script type="module" src="/js/auth.js"></script>
+    <script type="module" src="/js/deals.js"></script>
+    <script type="module" src="/js/coupons.js"></script>
+    <script type="module" src="/js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('SW registered', reg))
+                .catch(err => console.log('SW error', err));
+        }
+    </script>
+</body>
+</html>
