@@ -80,21 +80,50 @@ export const redeemCoupon = functions.https.onCall(async (data, context) => {
     return { success: false, error: 'Usuário não autenticado' };
   }
 
-  const { couponId } = data;
+  const { couponCode, couponId } = data; // Aceita tanto code quanto id
   const userId = context.auth.uid;
 
   try {
-    const couponDoc = await admin.firestore().collection('coupons').doc(couponId).get();
-
-    if (!couponDoc.exists) {
-      return { success: false, error: 'Cupom não encontrado' };
+    let couponDoc;
+    
+    // Buscar cupom por código ou ID
+    if (couponCode) {
+      const couponsSnapshot = await admin.firestore()
+        .collection('coupons')
+        .where('code', '==', couponCode)
+        .limit(1)
+        .get();
+      
+      if (couponsSnapshot.empty) {
+        return { success: false, error: 'Cupom não encontrado' };
+      }
+      
+      couponDoc = couponsSnapshot.docs[0];
+    } else if (couponId) {
+      couponDoc = await admin.firestore().collection('coupons').doc(couponId).get();
+      if (!couponDoc.exists) {
+        return { success: false, error: 'Cupom não encontrado' };
+      }
+    } else {
+      return { success: false, error: 'Código ou ID do cupom não fornecido' };
     }
 
     const coupon = couponDoc.data()!;
 
-    // Verificar se o cupom pertence ao usuário
-    if (coupon.userId !== userId) {
-      return { success: false, error: 'Cupom não pertence a este usuário' };
+    // Verificar se é o dono do cupom OU se é lojista do deal relacionado
+    let canRedeem = coupon.userId === userId;
+    
+    if (!canRedeem) {
+      // Verificar se é lojista do deal
+      const dealDoc = await admin.firestore().collection('deals').doc(coupon.dealId).get();
+      if (dealDoc.exists) {
+        const deal = dealDoc.data()!;
+        canRedeem = deal.merchantId === userId;
+      }
+    }
+
+    if (!canRedeem) {
+      return { success: false, error: 'Você não tem permissão para resgatar este cupom' };
     }
 
     // Verificar status
@@ -115,7 +144,12 @@ export const redeemCoupon = functions.https.onCall(async (data, context) => {
       redeemedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    return { success: true };
+    // Calcular economia
+    const dealDoc = await admin.firestore().collection('deals').doc(coupon.dealId).get();
+    const deal = dealDoc.data()!;
+    const savings = deal ? (deal.originalPrice - deal.dealPrice) : 0;
+
+    return { success: true, savings };
   } catch (error) {
     console.error('Erro ao resgatar cupom:', error);
     return { success: false, error: 'Erro ao resgatar cupom' };

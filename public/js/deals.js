@@ -13,7 +13,10 @@ import { generateCoupon } from './coupons.js';
 export async function getAvailableDeals(condominiumId) {
   try {
 	  
+    console.log('🔍 Buscando deals para:', condominiumId);
+	    
     const dealsRef = collection(db, 'deals');
+	
     const q = query(
       dealsRef,
       where('condominiumId', '==', condominiumId),
@@ -24,6 +27,9 @@ export async function getAvailableDeals(condominiumId) {
     );
     
     const snapshot = await getDocs(q);
+	
+	console.log('📦 Total de deals encontrados:', snapshot.size);
+	
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()

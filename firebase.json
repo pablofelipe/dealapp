@@ -8,6 +8,14 @@
     ],
     "rewrites": [
       {
+        "source": "/merchant",
+        "destination": "/merchant/index.html"
+      },
+      {
+        "source": "/merchant/**",
+        "destination": "/merchant/index.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

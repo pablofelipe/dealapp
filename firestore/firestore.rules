@@ -8,13 +8,15 @@ service cloud.firestore {
     
     match /deals/{dealId} {
       allow read: if true;
-      allow write: if false;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
+                               resource.data.merchantId == request.auth.uid;
     }
     
     match /coupons/{couponId} {
-      allow read: if isAuthenticated() && 
-                     resource.data.userId == request.auth.uid;
-      allow write: if false;
+      // Permite leitura se for o dono do cupom ou se estiver autenticado (para validação por lojistas)
+      allow read: if isAuthenticated();
+      allow write: if false; // Apenas Cloud Functions
     }
     
     match /users/{userId} {
