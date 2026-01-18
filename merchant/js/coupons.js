@@ -1,11 +1,17 @@
 import { db, functions, auth } from './firebase-config.js';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs,
+import {
+  collection,
+  addDoc,
+  setDoc,
   doc,
-  getDoc
+  getDoc,
+  updateDoc,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  Timestamp,
+  increment
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
 
@@ -13,27 +19,27 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebas
 export function setupCouponValidation() {
   const validateBtn = document.getElementById('validate-btn');
   const couponInput = document.getElementById('coupon-code');
-  
+
   if (!validateBtn || !couponInput) return;
-  
+
   validateBtn.addEventListener('click', async () => {
     const code = couponInput.value.trim();
-    
+
     if (code.length !== 6) {
       alert('⚠️ O código deve ter 6 dígitos');
       return;
     }
-    
+
     await validateCoupon(code);
   });
-  
+
   // Permitir validar com Enter
   couponInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       validateBtn.click();
     }
   });
-  
+
   // Aceitar apenas números
   couponInput.addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/[^0-9]/g, '');
@@ -44,49 +50,49 @@ export function setupCouponValidation() {
 async function validateCoupon(code) {
   try {
     console.log('🔍 Validando cupom:', code);
-    
+
     const resultDiv = document.getElementById('validation-result');
     resultDiv.innerHTML = '<p style="text-align: center;">🔄 Validando...</p>';
     resultDiv.classList.remove('hidden', 'success', 'error');
-    
+
     // Buscar cupom no Firestore
     const couponsRef = collection(db, 'coupons');
     const q = query(couponsRef, where('code', '==', code));
     const snapshot = await getDocs(q);
-    
+
     if (snapshot.empty) {
       showValidationError('❌ Cupom não encontrado');
       return;
     }
-    
+
     const couponDoc = snapshot.docs[0];
     const coupon = { id: couponDoc.id, ...couponDoc.data() };
-    
+
     // Verificar status
     if (coupon.status === 'redeemed') {
       showValidationError('⚠️ Este cupom já foi utilizado');
       return;
     }
-    
+
     if (coupon.status === 'expired') {
       showValidationError('⚠️ Este cupom está expirado');
       return;
     }
-    
+
     // Verificar expiração
     const expiresAt = coupon.expiresAt?.toDate();
     if (expiresAt && expiresAt < new Date()) {
       showValidationError('⚠️ Este cupom expirou em ' + expiresAt.toLocaleDateString('pt-BR'));
       return;
     }
-    
+
     // Buscar informações do deal
     const dealDoc = await getDoc(doc(db, 'deals', coupon.dealId));
     const deal = dealDoc.exists() ? dealDoc.data() : null;
-    
+
     // Mostrar informações do cupom válido
     showValidationSuccess(coupon, deal);
-    
+
   } catch (error) {
     console.error('❌ Erro ao validar cupom:', error);
     showValidationError('❌ Erro ao validar cupom: ' + error.message);
@@ -95,9 +101,9 @@ async function validateCoupon(code) {
 
 function showValidationSuccess(coupon, deal) {
   const resultDiv = document.getElementById('validation-result');
-  
+
   const savings = deal ? (deal.originalPrice - deal.dealPrice).toFixed(2) : '0.00';
-  
+
   resultDiv.className = 'validation-result success';
   resultDiv.innerHTML = `
     <h2 style="color: #10b981; margin-bottom: 16px;">✅ Cupom Válido!</h2>
@@ -143,36 +149,107 @@ function getStatusText(status) {
   return statusMap[status] || status;
 }
 
+window.confirmRedemption = async function (couponId, couponCode) {
+  try {
+    if (!confirm(`Confirmar o uso do cupom ${couponCode}?`)) {
+      return;
+    }
+
+    console.log('🎫 Resgatando cupom:', couponCode);
+
+    // Buscar cupom
+    const couponRef = doc(db, 'coupons', couponId);
+    const couponDoc = await getDoc(couponRef);
+
+    if (!couponDoc.exists()) {
+      alert('❌ Cupom não encontrado');
+      return;
+    }
+
+    const coupon = couponDoc.data();
+
+    if (coupon.status !== 'pending') {
+      alert('❌ Cupom já foi utilizado ou está expirado');
+      return;
+    }
+
+    // Buscar deal para calcular economia
+    const dealDoc = await getDoc(doc(db, 'deals', coupon.dealId));
+    const deal = dealDoc.exists() ? dealDoc.data() : null;
+    const savings = deal ? (deal.originalPrice - deal.dealPrice) : 0;
+
+    console.log('data:', deal);
+
+    // Marcar como resgatado
+    await updateDoc(couponRef, {
+      status: 'redeemed',
+      redeemedAt: Timestamp.now()
+    });
+
+    // Atualizar economia do usuário
+    const userRef = doc(db, 'users', coupon.userId);
+    const userDoc = await getDoc(userRef);
+
+    if (userDoc.exists()) {
+      await updateDoc(userRef, {
+        totalSavings: increment(savings),
+        dealsPurchased: increment(1)
+      });
+    } else {
+      // Criar documento do usuário se não existir
+      await setDoc(userRef, {
+        totalSavings: savings,
+        dealsPurchased: 1,
+        createdAt: Timestamp.now()
+      });
+    }
+
+    alert(`✅ Cupom resgatado!\n\nEconomia: R$ ${savings.toFixed(2)}`);
+
+    // Limpar
+    document.getElementById('coupon-code').value = '';
+    document.getElementById('validation-result').classList.add('hidden');
+
+    // Recarregar stats
+    const merchantId = auth.currentUser?.uid;
+    await loadStats(merchantId);
+
+  } catch (error) {
+    console.error('❌ Erro ao resgatar:', error);
+    alert('❌ Erro ao resgatar cupom');
+  }
+};
+
 // Confirmar resgate do cupom
-window.confirmRedemption = async function(couponId, couponCode) {
+window.confirmRedemptionCloudFunction = async function (couponId, couponCode) {
   try {
     if (!confirm(`Confirmar o uso do cupom ${couponCode}?\n\nEsta ação não pode ser desfeita.`)) {
       return;
     }
-    
+
     console.log('🎫 Resgatando cupom:', couponCode);
-    
+
     // Chamar Cloud Function
     const redeemCoupon = httpsCallable(functions, 'redeemCoupon');
     const result = await redeemCoupon({ couponCode });
-    
+
     if (result.data.success) {
       const savings = result.data.savings;
-      
+
       alert(`✅ Cupom resgatado com sucesso!\n\nEconomia do cliente: R$ ${savings.toFixed(2)}`);
-      
+
       // Limpar formulário
       document.getElementById('coupon-code').value = '';
       document.getElementById('validation-result').classList.add('hidden');
-      
+
       // Atualizar estatísticas
       const merchantId = auth.currentUser?.uid;
       await loadStats(merchantId);
-      
+
     } else {
       alert('❌ Erro ao resgatar cupom: ' + result.data.message);
     }
-    
+
   } catch (error) {
     console.error('❌ Erro ao resgatar cupom:', error);
     alert('❌ Erro ao resgatar cupom. Verifique a conexão e tente novamente.');
@@ -183,21 +260,21 @@ window.confirmRedemption = async function(couponId, couponCode) {
 export async function loadStats(merchantId) {
   try {
     console.log('📊 Carregando estatísticas...');
-    
+
     // Buscar deals do lojista
     const dealsRef = collection(db, 'deals');
     const dealsQuery = query(dealsRef, where('merchantId', '==', merchantId));
     const dealsSnapshot = await getDocs(dealsQuery);
-    
+
     const dealIds = dealsSnapshot.docs.map(doc => doc.id);
-    
+
     // Estatísticas
     let totalDeals = dealIds.length;
     let activeDeals = 0;
     let totalCoupons = 0;
     let redeemedCoupons = 0;
     let totalRevenue = 0;
-    
+
     // Contar deals ativos
     dealsSnapshot.docs.forEach(doc => {
       const deal = doc.data();
@@ -205,23 +282,23 @@ export async function loadStats(merchantId) {
         activeDeals++;
       }
     });
-    
+
     // Buscar cupons
     if (dealIds.length > 0) {
       const couponsRef = collection(db, 'coupons');
-      
+
       // Firestore não suporta 'in' com arrays grandes, então vamos buscar todos
       // Em produção, você deveria fazer isso em batches ou via Cloud Function
       const allCouponsSnapshot = await getDocs(couponsRef);
-      
+
       allCouponsSnapshot.docs.forEach(doc => {
         const coupon = doc.data();
         if (dealIds.includes(coupon.dealId)) {
           totalCoupons++;
-          
+
           if (coupon.status === 'redeemed') {
             redeemedCoupons++;
-            
+
             // Calcular receita (buscar deal price)
             const deal = dealsSnapshot.docs.find(d => d.id === coupon.dealId);
             if (deal) {
@@ -231,20 +308,20 @@ export async function loadStats(merchantId) {
         }
       });
     }
-    
+
     // Atualizar UI
     document.getElementById('stat-deals').textContent = activeDeals;
     document.getElementById('stat-coupons').textContent = totalCoupons;
     document.getElementById('stat-redeemed').textContent = redeemedCoupons;
     document.getElementById('stat-revenue').textContent = `R$ ${totalRevenue.toFixed(2)}`;
-    
-    console.log('✅ Estatísticas carregadas:', { 
-      activeDeals, 
-      totalCoupons, 
-      redeemedCoupons, 
-      totalRevenue 
+
+    console.log('✅ Estatísticas carregadas:', {
+      activeDeals,
+      totalCoupons,
+      redeemedCoupons,
+      totalRevenue
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao carregar estatísticas:', error);
   }

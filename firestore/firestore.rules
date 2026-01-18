@@ -6,21 +6,40 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Deals
     match /deals/{dealId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && 
-                               resource.data.merchantId == request.auth.uid;
+      allow update: if isAuthenticated() && 
+                       (resource.data.merchantId == request.auth.uid ||
+                        request.resource.data.stockAvailable == resource.data.stockAvailable - 1);
+      allow delete: if isAuthenticated() && 
+                       resource.data.merchantId == request.auth.uid;
     }
     
+    // Coupons - permitir criar e ler próprios cupons
     match /coupons/{couponId} {
-      // Permite leitura se for o dono do cupom ou se estiver autenticado (para validação por lojistas)
+      // Leitura: dono do cupom OU qualquer autenticado (para lojista validar)
       allow read: if isAuthenticated();
-      allow write: if false; // Apenas Cloud Functions
+      
+      // Criação: apenas se o userId do cupom for o próprio usuário
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Atualização: dono do cupom OU se estiver marcando como resgatado
+      allow update: if isAuthenticated() && 
+                       (resource.data.userId == request.auth.uid ||
+                        request.resource.data.status == 'redeemed');
     }
     
+    // Users - cada usuário acessa seus próprios dados
     match /users/{userId} {
-      allow read, write: if isAuthenticated() && userId == request.auth.uid;
+      allow read: if isAuthenticated() && 
+                     (userId == request.auth.uid || 
+                      exists(/databases/$(database)/documents/users/$(request.auth.uid)));
+      allow write: if isAuthenticated() && 
+                      (userId == request.auth.uid || 
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)));
     }
   }
 }
