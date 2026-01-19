@@ -1,31 +1,34 @@
 :root {
-  --primary: #2196F3;
-  --primary-dark: #1976D2;
-  --primary-light: #64B5F6;
-  --primary-gradient: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-  --secondary: #FF5722;
-  --secondary-dark: #E64A19;
-  --secondary-gradient: linear-gradient(135deg, #FF5722 0%, #E64A19 100%);
-  --success: #4CAF50;
-  --danger: #F44336;
-  --warning: #FF9800;
-  --text-primary: #1A1A1A;
-  --text-secondary: #6B7280;
-  --text-light: #9CA3AF;
-  --divider: #E5E7EB;
-  --background: #F9FAFB;
-  --surface: #FFFFFF;
+  --primary: #2196f3;
+  --primary-dark: #1976d2;
+  --primary-light: #64b5f6;
+  --primary-gradient: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  --secondary: #ff5722;
+  --secondary-dark: #e64a19;
+  --secondary-gradient: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);
+  --success: #4caf50;
+  --danger: #f44336;
+  --warning: #ff9800;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b7280;
+  --text-light: #9ca3af;
+  --divider: #e5e7eb;
+  --background: #f9fafb;
+  --surface: #ffffff;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
-  --sidebar-bg: #1E293B;
-  --sidebar-text: #CBD5E1;
-  --content-bg: #F8FAFC;
+  --sidebar-bg: #1e293b;
+  --sidebar-text: #cbd5e1;
+  --content-bg: #f8fafc;
 }
 
 * {
@@ -35,7 +38,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Oxygen, Ubuntu, Cantarell, sans-serif;
   background: var(--background);
   color: var(--text-primary);
   overflow-x: hidden;
@@ -102,17 +107,32 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.9; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Login Screen - Modernizado */
@@ -210,7 +230,12 @@ body {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transition: left 0.5s ease;
 }
 
@@ -256,7 +281,8 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -285,7 +311,7 @@ body {
 
 .sidebar-header {
   padding: 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sidebar-header h2 {
@@ -323,7 +349,7 @@ body {
 }
 
 .nav-btn:hover {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .nav-btn.active {
@@ -338,7 +364,7 @@ body {
 
 .sidebar-footer {
   padding: 16px;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .user-info {
@@ -700,7 +726,7 @@ body {
   .sidebar {
     transform: translateX(-100%);
   }
-  
+
   .main-content {
     margin-left: 0;
     padding: 20px;
@@ -795,5 +821,110 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Estilos para upload de imagem */
+.upload-container {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.upload-label:hover {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+}
+
+.image-preview {
+  text-align: center;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Campos do formulário */
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  background: white;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* Botões */
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-secondary {
+  background: white;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-container {
+    padding: 16px;
   }
 }

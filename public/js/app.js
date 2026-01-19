@@ -1,6 +1,8 @@
 import { observeAuthState, loginWithGoogle, logout } from './auth.js';
-import { getAvailableDeals, renderDeals } from './deals.js';
+import { getNearbyDeals, renderDeals } from './deals.js';
 import { loadMyCoupons } from './coupons.js';
+import { db, auth } from './firebase-config.js';
+import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Elementos DOM
 const loading = document.getElementById('loading');
@@ -15,8 +17,9 @@ const navItems = document.querySelectorAll('.nav-item');
 const dealsContainer = document.querySelector('.deals-container');
 const couponsSection = document.getElementById('coupons-section');
 
-// Estado da aplicação
+// Estado
 let currentUser = null;
+let userLocation = null;
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,13 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-  // Login
-  googleLoginBtn.addEventListener('click', loginWithGoogle);
+  googleLoginBtn?.addEventListener('click', loginWithGoogle);
+  logoutBtn?.addEventListener('click', logout);
   
-  // Logout
-  logoutBtn.addEventListener('click', logout);
-  
-  // Navegação
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
       const tab = e.currentTarget.dataset.tab;
@@ -40,24 +39,7 @@ function setupEventListeners() {
   });
   
   // Fechar modal
-  const modal = document.getElementById('deal-modal');
-  const closeBtn = document.querySelector('.close');
-  const modalBackdrop = document.querySelector('.modal-backdrop');
-  
-  if (closeBtn) {
-    closeBtn.addEventListener('click', closeModal);
-  }
-  
-  if (modalBackdrop) {
-    modalBackdrop.addEventListener('click', closeModal);
-  }
-  
-  // Fechar modal com ESC
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-      closeModal();
-    }
-  });
+  document.querySelector('.close')?.addEventListener('click', closeModal);
 }
 
 async function handleAuthStateChange(user) {
@@ -66,7 +48,7 @@ async function handleAuthStateChange(user) {
   if (user) {
     currentUser = user;
     showApp(user);
-    await loadDeals();
+    await requestLocationAndLoadDeals();
     await loadMyCoupons();
   } else {
     showLogin();
@@ -82,42 +64,179 @@ function showApp(user) {
   loginScreen.classList.add('hidden');
   app.classList.remove('hidden');
   
-  // Atualizar UI com dados do usuário
-  if (user.photoURL) {
-    userPhoto.src = user.photoURL;
-  }
-  userPhoto.alt = user.displayName || 'Usuário';
-}
-
-async function loadDeals() {
-  try {
-    // TODO: Pegar condominiumId do perfil do usuário
-    const condominiumId = 'cond_001'; // Temporário
-    const deals = await getAvailableDeals(condominiumId);
-    renderDeals(deals);
-  } catch (error) {
-    console.error('Erro ao carregar ofertas:', error);
+  if (userPhoto) {
+    userPhoto.src = user.photoURL || '/assets/icons/icon-192.png';
+    userPhoto.alt = user.displayName || 'Usuário';
   }
 }
 
-function switchTab(tab) {
-  // Atualizar navegação
-  navItems.forEach(item => item.classList.remove('active'));
-  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+/**
+ * Solicitar localização e carregar ofertas
+ */
+async function requestLocationAndLoadDeals() {
+  console.log('📍 Solicitando localização do usuário...');
   
-  // Mostrar conteúdo correto
-  if (tab === 'deals') {
-    dealsContainer.classList.remove('hidden');
-    couponsSection.classList.add('hidden');
-  } else if (tab === 'coupons') {
-    dealsContainer.classList.add('hidden');
-    couponsSection.classList.remove('hidden');
+  try {
+    const position = await getCurrentPosition();
+    
+    userLocation = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy: position.coords.accuracy
+    };
+    
+    console.log('✅ Localização obtida:', userLocation);
+    
+    // Salvar localização do usuário
+    await updateUserLocation(userLocation);
+    
+    // Buscar ofertas próximas (raio de 10km)
+    await loadDeals(10);
+    
+  } catch (error) {
+    console.error('❌ Erro ao obter localização:', error);
+    handleLocationError(error);
   }
 }
 
-function closeModal() {
-  document.getElementById('deal-modal').classList.add('hidden');
+/**
+ * Carregar ofertas próximas
+ */
+async function loadDeals(radius = 10) {
+  try {
+    if (!userLocation) {
+      console.error('Localização do usuário não disponível');
+      return;
+    }
+    
+    console.log(`🔍 Buscando ofertas em um raio de ${radius}km`);
+    
+    const deals = await getNearbyDeals(userLocation, radius);
+    renderDeals(deals);
+    
+    // Mostrar mensagem se não encontrou nada
+    if (deals.length === 0) {
+      const dealsList = document.getElementById('deals-list');
+      if (dealsList) {
+        dealsList.innerHTML = `
+          <div class="empty-state">
+            <p style="font-size: 18px; margin-bottom: 16px;">📍 Nenhuma oferta encontrada em ${radius}km</p>
+            <button class="btn-primary" onclick="expandSearch()">
+              Buscar em um raio maior (20km)
+            </button>
+          </div>
+        `;
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro ao carregar ofertas:', error);
+  }
 }
 
-// Exportar para uso global
+/**
+ * Expandir busca para raio maior
+ */
+window.expandSearch = async function() {
+  await loadDeals(20); // 20km
+};
+
+/**
+ * Obter posição atual do navegador
+ */
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocalização não suportada pelo navegador'));
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // Cache de 5 minutos
+      }
+    );
+  });
+}
+
+/**
+ * Atualizar localização do usuário no Firestore
+ */
+async function updateUserLocation(location) {
+  try {
+    if (!currentUser) return;
+    
+    const userRef = doc(db, 'users', currentUser.uid);
+    
+    await setDoc(userRef, {
+      location,
+      lastLocationUpdate: Timestamp.now()
+    }, { merge: true });
+    
+    console.log('✅ Localização salva no Firestore');
+  } catch (error) {
+    console.error('❌ Erro ao salvar localização:', error);
+  }
+}
+
+/**
+ * Tratar erros de localização
+ */
+function handleLocationError(error) {
+  console.error('Erro de localização:', error);
+  
+  let message = 'Não foi possível obter sua localização.';
+  let fallbackLocation = null;
+  
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      message = 'Você negou acesso à localização. Para ver ofertas próximas, permita o acesso.';
+      break;
+    case error.POSITION_UNAVAILABLE:
+      message = 'Localização indisponível no momento.';
+      break;
+    case error.TIMEOUT:
+      message = 'Tempo esgotado ao buscar localização.';
+      break;
+  }
+  
+  alert(message + '\n\nUsando localização padrão (São Paulo - Centro).');
+  
+  // Usar localização padrão (Avenida Paulista, SP)
+  userLocation = {
+    latitude: -23.561684,
+    longitude: -46.655981,
+    isDefault: true
+  };
+  
+  loadDeals(50); // Raio maior para localização padrão
+}
+
+/**
+ * Trocar entre abas
+ */
+function switchTab(tab) {
+  navItems.forEach(item => item.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  
+  if (tab === 'deals') {
+    dealsContainer?.classList.remove('hidden');
+    couponsSection?.classList.add('hidden');
+  } else if (tab === 'coupons') {
+    dealsContainer?.classList.add('hidden');
+    couponsSection?.classList.remove('hidden');
+  }
+}
+
+/**
+ * Fechar modal
+ */
+function closeModal() {
+  document.getElementById('deal-modal')?.classList.add('hidden');
+}
+
 window.closeModal = closeModal;

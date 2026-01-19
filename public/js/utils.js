@@ -1,78 +1,50 @@
-// Funções auxiliares
+/**
+ * Utilitários para cálculos de distância e formatação
+ */
 
 /**
- * Formata um valor numérico como moeda brasileira
+ * Calcula distância entre dois pontos usando fórmula de Haversine
+ * @param {number} lat1 - Latitude do ponto 1
+ * @param {number} lon1 - Longitude do ponto 1
+ * @param {number} lat2 - Latitude do ponto 2
+ * @param {number} lon2 - Longitude do ponto 2
+ * @returns {number} Distância em quilômetros
  */
-export function formatCurrency(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value);
-}
-
-/**
- * Formata uma data para formato brasileiro
- */
-export function formatDate(date) {
-  if (!date) return '';
+export function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Raio da Terra em km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
   
-  const d = date instanceof Date ? date : new Date(date.seconds ? date.seconds * 1000 : date);
-  return d.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-}
-
-/**
- * Formata uma data e hora para formato brasileiro
- */
-export function formatDateTime(date) {
-  if (!date) return '';
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
   
-  const d = date instanceof Date ? date : new Date(date.seconds ? date.seconds * 1000 : date);
-  return d.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  return distance;
+}
+
+function toRad(degrees) {
+  return degrees * (Math.PI / 180);
 }
 
 /**
- * Calcula o desconto percentual entre dois valores
+ * Formata distância para exibição amigável
+ * @param {number} km - Distância em quilômetros
+ * @returns {string} Distância formatada
  */
-export function calculateDiscount(originalPrice, dealPrice) {
-  return Math.round(((originalPrice - dealPrice) / originalPrice) * 100);
+export function formatDistance(km) {
+  if (km < 1) {
+    return `${Math.round(km * 1000)}m`;
+  }
+  return `${km.toFixed(1)}km`;
 }
 
 /**
- * Valida se um email é válido
+ * Valida coordenadas geográficas
  */
-export function isValidEmail(email) {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
-}
-
-/**
- * Debounce function para limitar chamadas de função
- */
-export function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-/**
- * Verifica se estamos offline
- */
-export function isOffline() {
-  return !navigator.onLine;
+export function isValidCoordinates(lat, lng) {
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }

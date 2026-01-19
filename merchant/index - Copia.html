@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#2196F3" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="Painel de gerenciamento de ofertas para lojistas - Radar de Ofertas"
+    />
+    <title>Radar de Ofertas - Painel do Lojista</title>
+
+    <!-- Preconnect for better performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <link rel="stylesheet" href="/merchant/css/merchant.css" />
+  </head>
+  <body>
+    <!-- Loading Screen -->
+    <div
+      id="loading"
+      class="loading"
+      role="status"
+      aria-label="Carregando aplicativo"
+    >
+      <div class="loading-content">
+        <div class="logo-spinner">
+          <img
+            src="/public/assets/icons/icon-192.png"
+            alt="RadarOfertas"
+            class="loading-logo"
+          />
+          <div class="spinner-ring"></div>
+        </div>
+        <p class="loading-text">Carregando painel...</p>
+      </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div
+      id="login-screen"
+      class="screen hidden"
+      role="dialog"
+      aria-labelledby="login-title"
+    >
+      <div class="login-container">
+        <div class="login-header">
+          <img
+            src="/public/assets/icons/icon-192.png"
+            alt="Radar de Ofertas - Painel do Lojista"
+            class="logo"
+          />
+          <h1 id="login-title" class="brand-title">Radar de Ofertas Lojista</h1>
+          <p class="brand-subtitle">
+            Conecte-se com milhares de clientes e multiplique suas vendas
+          </p>
+        </div>
+        <div class="login-content">
+          <button
+            id="google-login-btn"
+            class="btn-primary"
+            aria-label="Entrar com Google"
+          >
+            <img
+              src="/public/assets/icons/google.svg"
+              alt="Google"
+              class="google-icon"
+            />
+            <span>Entrar com Google</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Panel -->
+    <div id="panel" class="hidden">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2>🏪 Radar de Ofertas</h2>
+          <p class="role-badge">Lojista</p>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="nav-btn active" data-view="deals">
+            <span>🏷️</span>
+            <span>Minhas Ofertas</span>
+          </button>
+          <button class="nav-btn" data-view="create-deal">
+            <span>➕</span>
+            <span>Nova Oferta</span>
+          </button>
+          <button class="nav-btn" data-view="validate">
+            <span>✅</span>
+            <span>Validar Cupom</span>
+          </button>
+          <button class="nav-btn" data-view="stats">
+            <span>📊</span>
+            <span>Estatísticas</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-info">
+            <img id="user-photo" class="avatar" alt="User" />
+            <div>
+              <p id="user-name">Carregando...</p>
+              <button id="logout-btn" class="btn-text">Sair</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- View: Minhas Ofertas -->
+        <div id="view-deals" class="view active">
+          <div class="view-header">
+            <h1>Minhas Ofertas</h1>
+            <button class="btn-primary" onclick="showView('create-deal')">
+              ➕ Nova Oferta
+            </button>
+          </div>
+          <div id="deals-list" class="deals-list">
+            <!-- Deals serão inseridos aqui -->
+          </div>
+        </div>
+
+        <!-- View: Criar Oferta -->
+        <div id="view-create-deal" class="view">
+          <div class="view-header">
+            <button class="btn-back" onclick="showView('deals')">
+              ← Voltar
+            </button>
+            <h1>Nova Oferta</h1>
+          </div>
+
+          <form id="deal-form" class="form-container">
+            <div class="form-group">
+              <label>Título da Oferta *</label>
+              <input
+                type="text"
+                id="deal-title"
+                required
+                placeholder="Ex: Pizza Margherita 50% OFF"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Descrição *</label>
+              <textarea
+                id="deal-description"
+                required
+                rows="3"
+                placeholder="Descreva os detalhes da oferta..."
+              ></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Preço Original (R$) *</label>
+                <input
+                  type="number"
+                  id="deal-original-price"
+                  required
+                  step="0.01"
+                  min="0"
+                  placeholder="40.00"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Preço com Desconto (R$) *</label>
+                <input
+                  type="number"
+                  id="deal-price"
+                  required
+                  step="0.01"
+                  min="0"
+                  placeholder="20.00"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Desconto (%)</label>
+                <input
+                  type="number"
+                  id="deal-discount"
+                  readonly
+                  placeholder="Calculado automaticamente"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Estoque Total *</label>
+                <input
+                  type="number"
+                  id="deal-stock"
+                  required
+                  min="1"
+                  placeholder="100"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Categoria *</label>
+                <select id="deal-category" required>
+                  <option value="">Selecione...</option>
+                  <option value="food">Alimentação</option>
+                  <option value="services">Serviços</option>
+                  <option value="health">Saúde</option>
+                  <option value="education">Educação</option>
+                  <option value="entertainment">Entretenimento</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Válido até *</label>
+                <input type="date" id="deal-expires" required />
+              </div>
+            </div>
+
+            <!-- LOCALIZAÇÃO -->
+            <h3 style="margin: 32px 0 16px 0; color: #1e293b;">📍 Localização do Estabelecimento</h3>
+            
+            <div class="form-group">
+              <label>Endereço Completo *</label>
+              <input
+                type="text"
+                id="deal-address"
+                required
+                placeholder="Av. Paulista, 1000 - Bela Vista, São Paulo - SP"
+              />
+              <small>Digite o endereço completo do seu estabelecimento</small>
+            </div>
+            
+            <div class="form-group">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="getLocationFromAddress()"
+                style="width: 100%;"
+              >
+                📍 Buscar Coordenadas Automaticamente
+              </button>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Latitude *</label>
+                <input
+                  type="number"
+                  id="deal-latitude"
+                  step="0.000001"
+                  required
+                  readonly
+                  placeholder="-23.561684"
+                />
+                <small>Será preenchido automaticamente</small>
+              </div>
+              
+              <div class="form-group">
+                <label>Longitude *</label>
+                <input
+                  type="number"
+                  id="deal-longitude"
+                  step="0.000001"
+                  required
+                  readonly
+                  placeholder="-46.655981"
+                />
+                <small>Será preenchido automaticamente</small>
+              </div>
+              
+              <div class="form-group">
+                <label>Bairro *</label>
+                <input
+                  type="text"
+                  id="deal-neighborhood"
+                  required
+                  placeholder="Bela Vista"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Raio de Atendimento *</label>
+                <select id="deal-radius" required>
+                  <option value="">Selecione...</option>
+                  <option value="2">2 km</option>
+                  <option value="5" selected>5 km</option>
+                  <option value="10">10 km</option>
+                  <option value="15">15 km</option>
+                  <option value="20">20 km</option>
+                  <option value="50">50 km (toda cidade)</option>
+                </select>
+                <small>Distância máxima que você atende</small>
+              </div>
+              
+              <div class="form-group">
+                <label>Opções de Entrega *</label>
+                <div style="display: flex; gap: 20px; padding-top: 12px;">
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input
+                      type="checkbox"
+                      id="delivery-pickup"
+                      checked
+                      style="width: auto; margin: 0;"
+                    />
+                    🏪 Retirada no local
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input
+                      type="checkbox"
+                      id="delivery-home"
+                      style="width: auto; margin: 0;"
+                    />
+                    🚚 Entrega em domicílio
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>URL da Imagem</label>
+              <input
+                type="url"
+                id="deal-image"
+                placeholder="https://exemplo.com/imagem.jpg"
+              />
+              <small>Cole o link de uma imagem hospedada online (Unsplash, etc)</small>
+            </div>
+
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="showView('deals')"
+              >
+                Cancelar
+              </button>
+              <button type="submit" class="btn-primary">Publicar Oferta</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- View: Validar Cupom -->
+        <div id="view-validate" class="view">
+          <div class="view-header">
+            <h1>Validar Cupom</h1>
+          </div>
+
+          <div class="validate-container">
+            <div class="validate-box">
+              <h2>Digite o código do cupom</h2>
+              <input
+                type="text"
+                id="coupon-code"
+                placeholder="000000"
+                maxlength="6"
+                pattern="[0-9]{6}"
+                class="coupon-input"
+              />
+              <button class="btn-primary btn-large" id="validate-btn">
+                ✅ Validar Cupom
+              </button>
+            </div>
+
+            <div id="validation-result" class="validation-result hidden">
+              <!-- Resultado da validação -->
+            </div>
+          </div>
+        </div>
+
+        <!-- View: Estatísticas -->
+        <div id="view-stats" class="view">
+          <div class="view-header">
+            <h1>Estatísticas</h1>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">🏷️</div>
+              <div class="stat-value" id="stat-deals">0</div>
+              <div class="stat-label">Ofertas Ativas</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon">🎫</div>
+              <div class="stat-value" id="stat-coupons">0</div>
+              <div class="stat-label">Cupons Gerados</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon">✅</div>
+              <div class="stat-value" id="stat-redeemed">0</div>
+              <div class="stat-label">Cupons Resgatados</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon">💰</div>
+              <div class="stat-value" id="stat-revenue">R$ 0</div>
+              <div class="stat-label">Faturamento</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="/merchant/js/firebase-config.js"></script>
+    <script type="module" src="/merchant/js/auth.js"></script>
+    <script type="module" src="/merchant/js/deals.js"></script>
+    <script type="module" src="/merchant/js/coupons.js"></script>
+    <script type="module" src="/merchant/js/app.js"></script>
+  </body>
+</html>

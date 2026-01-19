@@ -952,3 +952,48 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Localização e Distância */
+.deal-location {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.distance-badge {
+  background: #E3F2FD;
+  color: #1976D2;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-weight: 500;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.neighborhood {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.deal-stock {
+  display: flex;
+  gap: 12px;
+  color: #64748b;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+.empty-state .btn-primary {
+  margin-top: 16px;
+}
