@@ -1,89 +1,201 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#2196F3">
-    <meta name="description" content="Ofertas exclusivas para seu condomínio">
-    
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#2196F3" />
+    <meta
+      name="description"
+      content="Ofertas exclusivas do seu bairro - Radar de Ofertas"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="RadarOfertas" />
+
     <!-- PWA -->
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/public/assets/icons/icon-192.png">
-    
-    <title>DealApp - Ofertas do Condomínio</title>
-    <link rel="stylesheet" href="/public/css/styles.css">
-</head>
-<body>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/public/assets/icons/icon-192.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/public/assets/icons/icon-192.png"
+    />
+
+    <!-- Preconnect for better performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <title>Radar de Ofertas do Bairro</title>
+    <link rel="stylesheet" href="/public/css/styles.css" />
+  </head>
+  <body>
     <!-- Loading Screen -->
-    <div id="loading" class="loading">
-        <div class="spinner"></div>
+    <div
+      id="loading"
+      class="loading"
+      role="status"
+      aria-label="Carregando aplicativo"
+    >
+      <div class="loading-content">
+        <div class="logo-spinner">
+          <img
+            src="/public/assets/icons/icon-192.png"
+            alt="RadarOfertas"
+            class="loading-logo"
+          />
+          <div class="spinner-ring"></div>
+        </div>
+        <p class="loading-text">Carregando ofertas...</p>
+      </div>
     </div>
 
     <!-- Login Screen -->
-    <div id="login-screen" class="screen hidden">
-        <div class="login-container">
-            <img src="/public/assets/icons/icon-192.png" alt="DealApp" class="logo">
-            <h1>DealApp</h1>
-            <p>Ofertas exclusivas do seu condomínio</p>
-            <button id="google-login-btn" class="btn-primary">
-                <img src="/public/assets/icons/google.svg" alt="Google">
-                Entrar com Google
-            </button>
+    <div
+      id="login-screen"
+      class="screen hidden"
+      role="dialog"
+      aria-labelledby="login-title"
+    >
+      <div class="login-container">
+        <div class="login-header">
+          <img
+            src="/public/assets/icons/icon-192.png"
+            alt="Radar de Ofertas"
+            class="logo"
+          />
+          <h1 id="login-title" class="brand-title">Radar de Ofertas</h1>
+          <p class="brand-subtitle">
+            Economia real no seu bairro em poucos cliques
+          </p>
         </div>
+        <div class="login-content">
+          <button
+            id="google-login-btn"
+            class="btn-primary"
+            aria-label="Entrar com Google"
+          >
+            <img
+              src="/public/assets/icons/google.svg"
+              alt="Google"
+              class="google-icon"
+            />
+            <span>Entrar com Google</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Main App -->
-    <div id="app" class="hidden">
-        <!-- Header -->
-        <header class="app-header">
-            <h1>Ofertas Disponíveis</h1>
-            <div class="user-info">
-                <img id="user-photo" class="user-avatar" alt="User">
-                <button id="logout-btn" class="btn-icon">Sair</button>
-            </div>
+    <div
+      id="app"
+      class="hidden"
+      role="application"
+      aria-label="Aplicativo de Ofertas"
+    >
+      <!-- Header -->
+      <header class="app-header" role="banner">
+        <div class="header-content">
+          <div class="header-title-section">
+            <h1 class="app-title">Radar de Ofertas</h1>
+            <p class="app-subtitle">As melhores ofertas para você</p>
+          </div>
+          <div
+            class="user-info"
+            role="group"
+            aria-label="Informações do usuário"
+          >
+            <img
+              id="user-photo"
+              class="user-avatar"
+              alt="Foto do usuário"
+              role="img"
+              aria-label="Avatar do usuário"
+            />
+            <button id="logout-btn" class="btn-icon" aria-label="Sair da conta">
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Deals List -->
+      <main
+        class="deals-container"
+        role="main"
+        aria-label="Lista de ofertas disponíveis"
+      >
+        <div id="deals-list" class="deals-grid" role="list" aria-live="polite">
+          <!-- Deals serão inseridos aqui via JS -->
+        </div>
+      </main>
+
+      <!-- My Coupons Tab -->
+      <section
+        id="coupons-section"
+        class="hidden"
+        role="region"
+        aria-labelledby="coupons-title"
+      >
+        <header class="section-header">
+          <h2 id="coupons-title" class="section-title">Meus Cupons</h2>
+          <p class="section-subtitle">Gerencie seus cupons de desconto</p>
         </header>
+        <div
+          id="coupons-list"
+          class="coupons-grid"
+          role="list"
+          aria-live="polite"
+        >
+          <!-- Cupons serão inseridos aqui -->
+        </div>
+      </section>
 
-        <!-- Deals List -->
-        <main class="deals-container">
-            <div id="deals-list" class="deals-grid">
-                <!-- Deals serão inseridos aqui via JS -->
-            </div>
-        </main>
-
-        <!-- My Coupons Tab -->
-        <section id="coupons-section" class="hidden">
-            <h2>Meus Cupons</h2>
-            <div id="coupons-list" class="coupons-grid">
-                <!-- Cupons serão inseridos aqui -->
-            </div>
-        </section>
-
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <button class="nav-item active" data-tab="deals">
-                <span>🏷️</span>
-                <span>Ofertas</span>
-            </button>
-            <button class="nav-item" data-tab="coupons">
-                <span>🎫</span>
-                <span>Cupons</span>
-            </button>
-            <button class="nav-item" data-tab="profile">
-                <span>👤</span>
-                <span>Perfil</span>
-            </button>
-        </nav>
+      <!-- Bottom Navigation -->
+      <nav
+        class="bottom-nav"
+        role="navigation"
+        aria-label="Navegação principal"
+      >
+        <button
+          class="nav-item active"
+          data-tab="deals"
+          aria-label="Ver ofertas"
+          aria-current="page"
+        >
+          <span class="nav-icon" aria-hidden="true">🏷️</span>
+          <span class="nav-label">Ofertas</span>
+        </button>
+        <button class="nav-item" data-tab="coupons" aria-label="Ver cupons">
+          <span class="nav-icon" aria-hidden="true">🎫</span>
+          <span class="nav-label">Cupons</span>
+        </button>
+        <button class="nav-item" data-tab="profile" aria-label="Ver perfil">
+          <span class="nav-icon" aria-hidden="true">👤</span>
+          <span class="nav-label">Perfil</span>
+        </button>
+      </nav>
     </div>
 
     <!-- Deal Modal -->
-    <div id="deal-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <div id="deal-details"></div>
-            <button id="generate-coupon-btn" class="btn-primary">
-                Gerar Cupom
-            </button>
-        </div>
+    <div
+      id="deal-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deal-modal-title"
+    >
+      <div class="modal-backdrop" aria-label="Fechar modal"></div>
+      <div class="modal-content" role="document">
+        <button class="close" aria-label="Fechar modal">&times;</button>
+        <div id="deal-details" role="article"></div>
+        <button id="generate-coupon-btn" class="btn-primary btn-large">
+          <span>Gerar Cupom</span>
+          <span class="btn-icon-right">🎫</span>
+        </button>
+      </div>
     </div>
 
     <!-- Firebase SDKs -->
@@ -92,14 +204,15 @@
     <script type="module" src="/public/js/deals.js"></script>
     <script type="module" src="/public/js/coupons.js"></script>
     <script type="module" src="/public/js/app.js"></script>
-    
+
     <!-- Service Worker Registration -->
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('SW registered', reg))
-                .catch(err => console.log('SW error', err));
-        }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then((reg) => console.log('SW registered', reg))
+          .catch((err) => console.log('SW error', err));
+      }
     </script>
-</body>
+  </body>
 </html>

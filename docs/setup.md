@@ -1,4 +1,4 @@
-# Guia de Setup - DealApp
+# Guia de Setup - Radar de Ofertas
 
 ## Pré-requisitos
 
@@ -19,6 +19,7 @@ firebase init
 ```
 
 Durante a inicialização:
+
 - Selecione **Hosting** e **Functions**
 - Escolha seu projeto Firebase ou crie um novo
 - Configure o diretório público como `public`
@@ -30,21 +31,23 @@ Edite `public/js/firebase-config.js` e substitua as credenciais:
 
 ```javascript
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: 'SUA_API_KEY',
+  authDomain: 'SEU_PROJETO.firebaseapp.com',
+  projectId: 'SEU_PROJECT_ID',
+  storageBucket: 'SEU_PROJETO.appspot.com',
+  messagingSenderId: 'SEU_SENDER_ID',
+  appId: 'SEU_APP_ID',
 };
 ```
 
 Você pode encontrar essas credenciais em:
+
 - Firebase Console → Configurações do Projeto → Seus Apps
 
 ### 3. Configurar Autenticação
 
 No Firebase Console:
+
 1. Vá em **Authentication** → **Sign-in method**
 2. Habilite **Google** como provedor de autenticação
 3. Configure o domínio autorizado (se necessário)
@@ -52,10 +55,12 @@ No Firebase Console:
 ### 4. Configurar Firestore
 
 As regras e índices já estão configurados em:
+
 - `firestore/firestore.rules`
 - `firestore/firestore.indexes.json`
 
 Para aplicar:
+
 ```bash
 firebase deploy --only firestore:rules
 firebase deploy --only firestore:indexes
@@ -81,10 +86,12 @@ firebase deploy --only functions
 ### 7. Criar Ícones PWA
 
 Você precisa criar os ícones do PWA em `public/assets/icons/`:
+
 - `icon-192.png` (192x192 pixels)
 - `icon-512.png` (512x512 pixels)
 
 **Dica:** Use ferramentas online como:
+
 - https://www.pwabuilder.com/imageGenerator
 - https://realfavicongenerator.net/
 
@@ -113,6 +120,7 @@ firebase emulators:start
 ### Collections do Firestore
 
 #### `deals` (Ofertas)
+
 ```javascript
 {
   title: string,
@@ -130,6 +138,7 @@ firebase emulators:start
 ```
 
 #### `coupons` (Cupons)
+
 ```javascript
 {
   code: string,
@@ -145,6 +154,7 @@ firebase emulators:start
 ```
 
 #### `users` (Usuários)
+
 ```javascript
 {
   email: string,

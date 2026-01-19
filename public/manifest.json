@@ -1,7 +1,7 @@
 {
-  "name": "DealApp - Ofertas do Condomínio",
-  "short_name": "DealApp",
-  "description": "Ofertas exclusivas para moradores",
+  "name": "Radar de Ofertas - Ofertas do Bairro",
+  "short_name": "RadarOfertas",
+  "description": "Ofertas exclusivas para moradores do bairro",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

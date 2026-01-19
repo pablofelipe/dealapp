@@ -40,7 +40,24 @@ function setupEventListeners() {
   });
   
   // Fechar modal
-  document.querySelector('.close').addEventListener('click', closeModal);
+  const modal = document.getElementById('deal-modal');
+  const closeBtn = document.querySelector('.close');
+  const modalBackdrop = document.querySelector('.modal-backdrop');
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeModal);
+  }
+  
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener('click', closeModal);
+  }
+  
+  // Fechar modal com ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
 }
 
 async function handleAuthStateChange(user) {

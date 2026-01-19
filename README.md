@@ -25,13 +25,17 @@ Progressive Web App (PWA) designed to deliver exclusive deals and coupons to use
 
 ```
 dealapp/
-├── public/              # Frontend (HTML, CSS, JS)
+├── public/              # Main PWA frontend (HTML, CSS, JS)
 │   ├── index.html
 │   ├── manifest.json
 │   ├── sw.js           # Service Worker
 │   ├── css/
 │   ├── js/
 │   └── assets/
+├── merchant/           # Merchant panel frontend
+│   ├── index.html
+│   ├── css/
+│   └── js/
 ├── functions/          # Cloud Functions (TypeScript)
 │   └── src/
 ├── firestore/         # Firestore rules and indexes
@@ -59,6 +63,32 @@ See the complete guide at [docs/setup.md](docs/setup.md)
    ```bash
    firebase deploy
    ```
+
+## 🧪 Testing
+
+### Firebase Console
+
+Access the Firebase Console to manage your project:
+- [Firebase Console](https://console.firebase.google.com/)
+
+### Local Development
+
+To test the application locally before deploying:
+
+```bash
+firebase serve --only hosting --project the-dealapp
+```
+
+Once the server is running, you can access:
+
+- **Main PWA**: [http://localhost:5000/public/](http://localhost:5000/public/)
+- **Merchant Panel**: [http://localhost:5000/merchant/](http://localhost:5000/merchant/)
+
+### Testing Guidelines
+
+1. **Firebase Console**: Use the Firebase Console to monitor authentication, database operations, and view logs
+2. **Local Testing**: Always test changes locally using `firebase serve` before deploying
+3. **Both Interfaces**: Test both the user-facing PWA (`/public/`) and the merchant panel (`/merchant/`) to ensure full functionality
 
 ## 📖 Documentation
 
