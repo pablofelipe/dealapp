@@ -128,7 +128,6 @@ firebase emulators:start
   originalPrice: number,
   dealPrice: number,
   discount: number,
-  condominiumId: string,
   stockAvailable: number,
   imageUrl: string,
   expiresAt: Timestamp,
@@ -160,7 +159,6 @@ firebase emulators:start
   email: string,
   displayName: string,
   photoURL: string,
-  condominiumId: string,
   isAdmin: boolean,
   createdAt: Timestamp
 }

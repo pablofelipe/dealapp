@@ -15,8 +15,12 @@ export const generateCoupon = functions.https.onCall(async (data, context) => {
 
   try {
     // Buscar a oferta
-    const dealDoc = await admin.firestore().collection('deals').doc(dealId).get();
-    
+    const dealDoc = await admin
+      .firestore()
+      .collection('deals')
+      .doc(dealId)
+      .get();
+
     if (!dealDoc.exists) {
       return { success: false, error: 'Oferta não encontrada' };
     }
@@ -44,16 +48,20 @@ export const generateCoupon = functions.https.onCall(async (data, context) => {
       userId,
       status: 'pending',
       generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      expiresAt: deal.expiresAt || admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)), // 30 dias padrão
+      expiresAt:
+        deal.expiresAt ||
+        admin.firestore.Timestamp.fromDate(
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        ), // 30 dias padrão
       dealTitle: deal.title,
-      dealPrice: deal.dealPrice
+      dealPrice: deal.dealPrice,
     };
 
     // Usar transação para garantir atomicidade
     await admin.firestore().runTransaction(async (transaction) => {
       // Reduzir estoque
       transaction.update(dealDoc.ref, {
-        stockAvailable: admin.firestore.FieldValue.increment(-1)
+        stockAvailable: admin.firestore.FieldValue.increment(-1),
       });
 
       // Criar cupom
@@ -65,8 +73,8 @@ export const generateCoupon = functions.https.onCall(async (data, context) => {
       success: true,
       coupon: {
         code: couponCode,
-        id: admin.firestore().collection('coupons').doc().id
-      }
+        id: admin.firestore().collection('coupons').doc().id,
+      },
     };
   } catch (error) {
     console.error('Erro ao gerar cupom:', error);
@@ -85,22 +93,27 @@ export const redeemCoupon = functions.https.onCall(async (data, context) => {
 
   try {
     let couponDoc;
-    
+
     // Buscar cupom por código ou ID
     if (couponCode) {
-      const couponsSnapshot = await admin.firestore()
+      const couponsSnapshot = await admin
+        .firestore()
         .collection('coupons')
         .where('code', '==', couponCode)
         .limit(1)
         .get();
-      
+
       if (couponsSnapshot.empty) {
         return { success: false, error: 'Cupom não encontrado' };
       }
-      
+
       couponDoc = couponsSnapshot.docs[0];
     } else if (couponId) {
-      couponDoc = await admin.firestore().collection('coupons').doc(couponId).get();
+      couponDoc = await admin
+        .firestore()
+        .collection('coupons')
+        .doc(couponId)
+        .get();
       if (!couponDoc.exists) {
         return { success: false, error: 'Cupom não encontrado' };
       }
@@ -112,10 +125,14 @@ export const redeemCoupon = functions.https.onCall(async (data, context) => {
 
     // Verificar se é o dono do cupom OU se é lojista do deal relacionado
     let canRedeem = coupon.userId === userId;
-    
+
     if (!canRedeem) {
       // Verificar se é lojista do deal
-      const dealDoc = await admin.firestore().collection('deals').doc(coupon.dealId).get();
+      const dealDoc = await admin
+        .firestore()
+        .collection('deals')
+        .doc(coupon.dealId)
+        .get();
       if (dealDoc.exists) {
         const deal = dealDoc.data()!;
         canRedeem = deal.merchantId === userId;
@@ -123,7 +140,10 @@ export const redeemCoupon = functions.https.onCall(async (data, context) => {
     }
 
     if (!canRedeem) {
-      return { success: false, error: 'Você não tem permissão para resgatar este cupom' };
+      return {
+        success: false,
+        error: 'Você não tem permissão para resgatar este cupom',
+      };
     }
 
     // Verificar status
@@ -141,13 +161,17 @@ export const redeemCoupon = functions.https.onCall(async (data, context) => {
     // Marcar como resgatado
     await couponDoc.ref.update({
       status: 'redeemed',
-      redeemedAt: admin.firestore.FieldValue.serverTimestamp()
+      redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     // Calcular economia
-    const dealDoc = await admin.firestore().collection('deals').doc(coupon.dealId).get();
+    const dealDoc = await admin
+      .firestore()
+      .collection('deals')
+      .doc(coupon.dealId)
+      .get();
     const deal = dealDoc.data()!;
-    const savings = deal ? (deal.originalPrice - deal.dealPrice) : 0;
+    const savings = deal ? deal.originalPrice - deal.dealPrice : 0;
 
     return { success: true, savings };
   } catch (error) {
@@ -169,10 +193,9 @@ export const createDeal = functions.https.onCall(async (data, context) => {
     description,
     originalPrice,
     dealPrice,
-    condominiumId,
     stockAvailable,
     imageUrl,
-    expiresAt
+    expiresAt,
   } = data;
 
   try {
@@ -182,12 +205,13 @@ export const createDeal = functions.https.onCall(async (data, context) => {
       originalPrice,
       dealPrice,
       discount: Math.round(((originalPrice - dealPrice) / originalPrice) * 100),
-      condominiumId,
       stockAvailable,
       imageUrl: imageUrl || '',
-      expiresAt: expiresAt ? admin.firestore.Timestamp.fromDate(new Date(expiresAt)) : null,
+      expiresAt: expiresAt
+        ? admin.firestore.Timestamp.fromDate(new Date(expiresAt))
+        : null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: context.auth.uid
+      createdBy: context.auth.uid,
     };
 
     const dealRef = await admin.firestore().collection('deals').add(deal);
@@ -211,7 +235,7 @@ export const updateStock = functions.https.onCall(async (data, context) => {
 
   try {
     await admin.firestore().collection('deals').doc(dealId).update({
-      stockAvailable
+      stockAvailable,
     });
 
     return { success: true };

@@ -115,124 +115,447 @@ function createDealItem(deal) {
   return item;
 }
 
-// Setup do formulário
-export function setupDealForm() {
-  const form = document.getElementById('deal-form');
+// ========== FUNÇÕES AUXILIARES ==========
 
-  if (!form) return;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await createDeal();
-  });
+/**
+ * Obtém elemento do DOM com validação
+ * @param {string} id - ID do elemento
+ * @param {string} fieldName - Nome amigável do campo (para mensagens de erro)
+ * @returns {HTMLElement}
+ * @throws {Error} Se elemento não for encontrado
+ */
+function getElement(id, fieldName) {
+  const element = document.getElementById(id);
+  if (!element) {
+    throw new Error(`❌ Campo "${fieldName}" (ID: ${id}) não encontrado no HTML. Verifique se o elemento existe.`);
+  }
+  return element;
 }
+
+/**
+ * Obtém valor de input com validação
+ * @param {string} id - ID do elemento
+ * @param {string} fieldName - Nome amigável do campo
+ * @param {boolean} required - Se é obrigatório
+ * @returns {string}
+ * @throws {Error} Se campo obrigatório estiver vazio
+ */
+function getInputValue(id, fieldName, required = true) {
+  const element = getElement(id, fieldName);
+  const value = element.value.trim();
+
+  if (required && !value) {
+    throw new Error(`❌ Campo "${fieldName}" é obrigatório.`);
+  }
+
+  return value;
+}
+
+/**
+ * Obtém valor numérico com validação
+ * @param {string} id - ID do elemento
+ * @param {string} fieldName - Nome amigável
+ * @param {boolean} required - Se é obrigatório
+ * @param {number} min - Valor mínimo (opcional)
+ * @returns {number}
+ * @throws {Error} Se valor for inválido
+ */
+function getNumberValue(id, fieldName, required = true, min = 0) {
+  const value = getInputValue(id, fieldName, required);
+
+  if (value === '' && !required) {
+    return 0;
+  }
+
+  const number = parseFloat(value);
+
+  if (isNaN(number)) {
+    throw new Error(`❌ Campo "${fieldName}" deve ser um número válido.`);
+  }
+
+  if (number < min) {
+    throw new Error(`❌ Campo "${fieldName}" deve ser no mínimo ${min}.`);
+  }
+
+  return number;
+}
+
+/**
+ * Obtém valor de checkbox
+ * @param {string} id - ID do elemento
+ * @param {string} fieldName - Nome amigável
+ * @returns {boolean}
+ */
+function getCheckboxValue(id, fieldName) {
+  try {
+    const element = getElement(id, fieldName);
+    return element.checked;
+  } catch (error) {
+    // Se checkbox não existe, assume false
+    console.warn(`⚠️ Checkbox "${fieldName}" não encontrado, assumindo false.`);
+    return false;
+  }
+}
+
+/**
+ * Obtém valor de select
+ * @param {string} id - ID do elemento
+ * @param {string} fieldName - Nome amigável
+ * @param {boolean} required - Se é obrigatório
+ * @returns {string}
+ */
+function getSelectValue(id, fieldName, required = true) {
+  const element = getElement(id, fieldName);
+  const value = element.value;
+
+  if (required && !value) {
+    throw new Error(`❌ Selecione uma opção para "${fieldName}".`);
+  }
+
+  return value;
+}
+
+/**
+ * Valida data de expiração
+ * @param {string} dateString - Data no formato YYYY-MM-DD
+ * @returns {Date}
+ * @throws {Error} Se data for inválida
+ */
+function validateExpiryDate(dateString) {
+  if (!dateString) {
+    throw new Error('❌ Data de validade é obrigatória.');
+  }
+
+  console.log(`validateExpiryDate. dateString: ${dateString}`);
+
+  const expiresAt = new Date(dateString + 'T00:00:00');
+
+  if (isNaN(expiresAt.getTime())) {
+    throw new Error('❌ Data de validade inválida.');
+  }
+
+  // Define hora para fim do dia
+  expiresAt.setHours(23, 59, 59, 999);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const expiresDateOnly = new Date(expiresAt);
+  expiresDateOnly.setHours(0, 0, 0, 0);
+
+  console.log(`expiresDateOnly: ${expiresDateOnly}, today: ${today}`);
+  console.log('expiresDateOnly timestamp:', expiresDateOnly.getTime());
+  console.log('today timestamp:', today.getTime());
+
+  // Permite data atual ou futura
+  if (expiresDateOnly.getTime() < today.getTime()) {
+    console.log(`expiresDateOnly: ${expiresDateOnly}, today: ${today}`);
+    const diffDays = (today.getTime() - expiresDateOnly.getTime()) / (1000 * 60 * 60 * 24);
+    console.log(`Diferença: ${diffDays} dias`);
+    throw new Error('❌ Data de validade não pode ser no passado.');
+  }
+
+  return expiresAt;
+}
+
+/**
+ * Valida preços
+ * @param {number} originalPrice - Preço original
+ * @param {number} dealPrice - Preço com desconto
+ * @throws {Error} Se preços forem inválidos
+ */
+function validatePrices(originalPrice, dealPrice) {
+  if (originalPrice <= 0) {
+    throw new Error('❌ Preço original deve ser maior que zero.');
+  }
+
+  if (dealPrice <= 0) {
+    throw new Error('❌ Preço com desconto deve ser maior que zero.');
+  }
+
+  if (dealPrice >= originalPrice) {
+    throw new Error('❌ Preço com desconto deve ser menor que o preço original.');
+  }
+}
+
+// ========== FUNÇÃO PRINCIPAL REFATORADA ==========
+
+let isCreatingDeal = false;
 
 // Criar nova oferta
 async function createDeal() {
   try {
-    const merchantId = auth.currentUser?.uid;
 
-    if (!merchantId) {
-      alert('Você precisa estar logado');
+    if (isCreatingDeal) {
+      console.log('⚠️ Criação de oferta já em andamento, ignorando...');
       return;
     }
 
-    // Coletar dados do formulário
-    const title = document.getElementById('deal-title').value;
-    const description = document.getElementById('deal-description').value;
-    const originalPrice = parseFloat(document.getElementById('deal-original-price').value);
-    const dealPrice = parseFloat(document.getElementById('deal-price').value);
-    const stock = parseInt(document.getElementById('deal-stock').value);
-    const category = document.getElementById('deal-category').value;
-    const expiresDate = document.getElementById('deal-expires').value;
-    const imageUrl = document.getElementById('deal-image').value;
+    try {
+      isCreatingDeal = true;
 
-    // Localização
-    const address = document.getElementById('deal-address').value;
-    const latitude = parseFloat(document.getElementById('deal-latitude').value);
-    const longitude = parseFloat(document.getElementById('deal-longitude').value);
-    const neighborhood = document.getElementById('deal-neighborhood').value;
-    const deliveryRadius = parseFloat(document.getElementById('deal-radius').value);
+      console.log('🔄 Iniciando criação de oferta...');
 
-    // Opções de entrega
-    const hasPickup = document.getElementById('delivery-pickup').checked;
-    const hasDelivery = document.getElementById('delivery-home').checked;
+      // 1. Verificar autenticação
+      const merchantId = auth.currentUser?.uid;
+      if (!merchantId) {
+        throw new Error('Você precisa estar logado para criar ofertas.');
+      }
 
-    // Validações
-    if (dealPrice >= originalPrice) {
-      alert('❌ O preço com desconto deve ser menor que o preço original');
-      return;
+      // 2. Coletar dados básicos com validação
+      const title = getInputValue('deal-title', 'Título da oferta');
+      const description = getInputValue('deal-description', 'Descrição');
+      const originalPrice = getNumberValue('deal-original-price', 'Preço original', true, 0.01);
+      const dealPrice = getNumberValue('deal-price', 'Preço com desconto', true, 0.01);
+      const stock = getNumberValue('deal-stock', 'Estoque', true, 1);
+      const category = getSelectValue('deal-category', 'Categoria');
+
+      // 3. Validações de preço
+      validatePrices(originalPrice, dealPrice);
+
+      // 4. Coletar data com validação
+      const expiresDate = getInputValue('deal-expires', 'Data de validade');
+      const expiresAt = validateExpiryDate(expiresDate);
+
+      // 5. Coletar imagem (opcional)
+      let imageUrl = '';
+      try {
+        // Tenta pegar da URL primeiro
+        imageUrl = getInputValue('deal-image-url', 'URL da imagem', false);
+      } catch (error) {
+        // Se não tem campo de URL, verifica se tem upload
+        try {
+          const imageFile = getElement('deal-image-file', 'Arquivo de imagem');
+          if (imageFile.files && imageFile.files[0]) {
+            // Em produção, aqui você faria upload para Firebase Storage
+            imageUrl = await uploadImageToStorage(imageFile.files[0], merchantId);
+          }
+        } catch (uploadError) {
+          console.log('📷 Nenhuma imagem fornecida, usando placeholder.');
+        }
+      }
+
+      // Imagem padrão se não houver
+      if (!imageUrl) {
+        imageUrl = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&h=300&fit=crop';
+      }
+
+      // 6. Coletar localização (conforme novo HTML)
+      const address = getInputValue('deal-address', 'Endereço');
+      const neighborhood = getInputValue('deal-neighborhood', 'Bairro');
+      const deliveryRadius = getNumberValue('deal-radius', 'Raio de atendimento', true, 1);
+
+      // 7. Obter coordenadas automaticamente (usando função de geocodificação)
+      let latitude, longitude;
+      try {
+        // Tenta usar coordenadas já calculadas (se sua função de geocodificação as armazenou)
+        if (window.dealLatitude && window.dealLongitude) {
+          latitude = window.dealLatitude;
+          longitude = window.dealLongitude;
+          console.log('📍 Usando coordenadas da geocodificação:', latitude, longitude);
+        } else {
+          // Fallback: gera coordenadas aproximadas
+          console.warn('⚠️ Usando coordenadas aproximadas para endereço.');
+          // Em produção, você deve garantir que a geocodificação foi feita
+          throw new Error('Endereço não foi geocodificado. Digite o endereço completo e aguarde.');
+        }
+      } catch (geoError) {
+        throw new Error(`❌ ${geoError.message} Clique fora do campo de endereço para gerar coordenadas automaticamente.`);
+      }
+
+      // 8. Opções de entrega (fixo como retirada)
+      const deliveryOptions = ['pickup']; // Conforme solicitado
+
+      // 9. Calcular desconto
+      const discount = Math.round(((originalPrice - dealPrice) / originalPrice) * 100);
+
+      // 10. Montar dados da oferta
+      const dealData = {
+        title,
+        description,
+        originalPrice,
+        dealPrice,
+        discount,
+        stockTotal: stock,
+        stockAvailable: stock,
+        category,
+        merchantId,
+        merchantLocation: {
+          latitude,
+          longitude,
+          address,
+          neighborhood
+        },
+        deliveryRadius,
+        deliveryOptions,
+        imageUrl,
+        expiresAt: Timestamp.fromDate(expiresAt),
+        createdAt: Timestamp.now(),
+        status: 'active',
+        views: 0,
+        couponsGenerated: 0,
+        couponsRedeemed: 0
+      };
+
+      console.log('📝 Dados da oferta:', dealData);
+
+      // 11. Salvar no Firebase
+      console.log('💾 Salvando no Firebase...');
+      const docRef = await addDoc(collection(db, 'deals'), dealData);
+
+      console.log('✅ Oferta criada com ID:', docRef.id);
+
+      // 12. Feedback visual
+      showNotification('success', '🎉 Oferta criada com sucesso!');
+
+      // 13. Limpar formulário (opcional)
+      try {
+        const form = getElement('deal-form', 'Formulário');
+        form.reset();
+
+        // Limpa preview de imagem se existir
+        const imagePreview = document.getElementById('image-preview');
+        if (imagePreview) imagePreview.style.display = 'none';
+
+        const uploadContainer = document.getElementById('upload-container');
+        if (uploadContainer) uploadContainer.style.display = 'block';
+      } catch (formError) {
+        console.warn('⚠️ Não foi possível limpar o formulário:', formError.message);
+      }
+
+      // 14. Voltar para lista e recarregar
+      showView('deals');
+      await loadMerchantDeals(merchantId);
+
+    } catch (error) {
+      console.error('❌ Erro detalhado:', error);
+
+      // Mensagem amigável para o usuário
+      let userMessage = error.message;
+
+      // Melhora mensagens de erro específicas
+      if (error.message.includes('permission-denied')) {
+        userMessage = '❌ Permissão negada. Verifique suas credenciais.';
+      } else if (error.message.includes('network-error')) {
+        userMessage = '❌ Erro de conexão. Verifique sua internet.';
+      } else if (error.message.includes('not-found')) {
+        userMessage = '❌ Elemento não encontrado no HTML. Atualize a página.';
+      }
+
+      showNotification('error', userMessage);
     }
-
-    if (!latitude || !longitude) {
-      alert('❌ Busque as coordenadas do endereço primeiro');
-      return;
-    }
-
-    if (!hasPickup && !hasDelivery) {
-      alert('❌ Selecione pelo menos uma opção de entrega');
-      return;
-    }
-
-    const expiresAt = new Date(expiresDate);
-    if (expiresAt <= new Date()) {
-      alert('❌ A data de validade deve ser no futuro');
-      return;
-    }
-
-    // Calcular desconto
-    const discount = Math.round(((originalPrice - dealPrice) / originalPrice) * 100);
-
-    // Montar opções de entrega
-    const deliveryOptions = [];
-    if (hasPickup) deliveryOptions.push('pickup');
-    if (hasDelivery) deliveryOptions.push('delivery');
-
-    // Criar documento
-    const dealData = {
-      title,
-      description,
-      originalPrice,
-      dealPrice,
-      discount,
-      stockTotal: stock,
-      stockAvailable: stock,
-      category,
-      merchantId,
-      merchantLocation: {
-        latitude,
-        longitude,
-        address,
-        neighborhood
-      },
-      deliveryRadius,
-      deliveryOptions,
-      imageUrl: imageUrl || 'https://via.placeholder.com/500',
-      expiresAt: Timestamp.fromDate(expiresAt),
-      createdAt: Timestamp.now()
-    };
-
-    console.log('📝 Criando oferta:', dealData);
-
-    const docRef = await addDoc(collection(db, 'deals'), dealData);
-
-    console.log('✅ Oferta criada com ID:', docRef.id);
-    alert('✅ Oferta criada com sucesso!');
-
-    // Limpar formulário
-    document.getElementById('deal-form').reset();
-
-    // Voltar para lista
-    showView('deals');
-
-    // Recarregar lista
-    await loadMerchantDeals(merchantId);
-
   } catch (error) {
-    console.error('❌ Erro ao criar oferta:', error);
-    alert('❌ Erro ao criar oferta: ' + error.message);
+    throw new Error(`❌ ${error.message}`);
+  } finally {
+    isCreatingDeal = false;
   }
 }
+
+// ========== FUNÇÕES DE SUPORTE ==========
+
+/**
+ * Simula upload de imagem para Firebase Storage
+ * @param {File} file - Arquivo de imagem
+ * @param {string} merchantId - ID do lojista
+ * @returns {Promise<string>} URL da imagem
+ */
+async function uploadImageToStorage(file, merchantId) {
+  // Em produção, implemente com Firebase Storage:
+  /*
+  const storage = getStorage();
+  const storageRef = ref(storage, `deals / ${ merchantId }/${Date.now()}_${file.name}`);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
+  */
+
+  // Para desenvolvimento, retorna URL de placeholder
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    }, 500);
+  });
+}
+
+/**
+ * Mostra notificação
+ * @param {string} type - 'success', 'error', 'warning'
+ * @param {string} message - Mensagem a ser exibida
+ */
+function showNotification(type, message) {
+  // Remove notificações anteriores
+  const existing = document.querySelector('.deal-notification');
+  if (existing) existing.remove();
+
+  // Cria nova notificação
+  const notification = document.createElement('div');
+  notification.className = `deal-notification deal-notification-${type}`;
+  notification.textContent = message;
+
+  // Estilos
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#f59e0b'};
+    color: white;
+    border-radius: 8px;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideInRight 0.3s ease;
+    max-width: 400px;
+    word-wrap: break-word;
+  `;
+
+  document.body.appendChild(notification);
+
+  // Remove após 5 segundos
+  setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 5000);
+}
+
+// Adiciona estilos de animação
+if (!document.querySelector('#notification-styles')) {
+  const style = document.createElement('style');
+  style.id = 'notification-styles';
+  style.textContent = `
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+    .deal-notification-success { background: #10b981 !important; }
+    .deal-notification-error { background: #ef4444 !important; }
+    .deal-notification-warning { background: #f59e0b !important; }
+  `;
+  document.head.appendChild(style);
+}
+
+// ========== CONECTA EVENTO DE SUBMIT ==========
+
+// Adicione esta função para conectar o formulário
+export function setupDealForm() {
+  try {
+    const form = getElement('deal-form', 'Formulário de oferta');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await createDeal();
+    });
+    console.log('✅ Formulário de oferta configurado.');
+  } catch (error) {
+    console.warn('⚠️ Formulário de oferta não encontrado:', error.message);
+  }
+}
+
+// Chame esta função quando a view for carregada
+document.addEventListener('DOMContentLoaded', setupDealForm);
 
 // Geocoding - Buscar coordenadas do endereço
 window.getLocationFromAddress = async function () {

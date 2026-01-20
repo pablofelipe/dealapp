@@ -5,7 +5,6 @@ export interface Deal {
   originalPrice: number;
   dealPrice: number;
   discount: number;
-  condominiumId: string;
   stockAvailable: number;
   imageUrl?: string;
   expiresAt?: Date;

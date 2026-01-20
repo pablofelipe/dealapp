@@ -155,9 +155,9 @@ window.confirmRedemption = async function (couponId, couponCode) {
       return;
     }
 
-    console.log('🎫 Resgatando cupom:', couponCode);
+    console.log('🎫 Iniciando resgate do cupom:', couponCode);
 
-    // Buscar cupom
+    // 1. Referência do Cupom e Busca inicial
     const couponRef = doc(db, 'coupons', couponId);
     const couponDoc = await getDoc(couponRef);
 
@@ -173,50 +173,59 @@ window.confirmRedemption = async function (couponId, couponCode) {
       return;
     }
 
-    // Buscar deal para calcular economia
+    // 2. Buscar Oferta (Deal) para calcular a economia real
     const dealDoc = await getDoc(doc(db, 'deals', coupon.dealId));
     const deal = dealDoc.exists() ? dealDoc.data() : null;
+
+    // Cálculo da economia (Preço Original - Preço com Desconto)
     const savings = deal ? (deal.originalPrice - deal.dealPrice) : 0;
 
-    console.log('data:', deal);
-
-    // Marcar como resgatado
+    // 3. Atualizar o Status do Cupom (Operação Atômica)
     await updateDoc(couponRef, {
       status: 'redeemed',
-      redeemedAt: Timestamp.now()
+      redeemedAt: Timestamp.now(),
+      redeemedBy: auth.currentUser?.uid || 'system'
     });
 
-    // Atualizar economia do usuário
-    const userRef = doc(db, 'users', coupon.userId);
-    const userDoc = await getDoc(userRef);
+    console.log("ID do Usuário Dono do Cupom:", coupon.userId);
 
-    if (userDoc.exists()) {
-      await updateDoc(userRef, {
-        totalSavings: increment(savings),
-        dealsPurchased: increment(1)
-      });
-    } else {
-      // Criar documento do usuário se não existir
-      await setDoc(userRef, {
-        totalSavings: savings,
-        dealsPurchased: 1,
-        createdAt: Timestamp.now()
-      });
+    // 4. Atualizar Economia do Usuário (Cliente)
+    // Usamos setDoc com { merge: true } para criar o documento se ele não existir
+    // e increment() para somar os valores com segurança no banco
+    const userRef = doc(db, 'users', coupon.userId);
+
+    await setDoc(userRef, {
+      totalSavings: increment(savings),
+      dealsPurchased: increment(1),
+      lastActivity: Timestamp.now()
+    }, { merge: true });
+
+
+
+    // 5. Feedback visual e Limpeza
+    alert(`✅ Cupom resgatado com sucesso!\n\nEconomia gerada para o cliente: R$ ${savings.toFixed(2)}`);
+
+    const codeInput = document.getElementById('coupon-code');
+    const resultDiv = document.getElementById('validation-result');
+
+    if (codeInput) codeInput.value = '';
+    if (resultDiv) resultDiv.classList.add('hidden');
+
+    // 6. Atualizar estatísticas do Painel do Lojista
+    const merchantId = auth.currentUser?.uid;
+    if (merchantId) {
+      await loadStats(merchantId);
     }
 
-    alert(`✅ Cupom resgatado!\n\nEconomia: R$ ${savings.toFixed(2)}`);
-
-    // Limpar
-    document.getElementById('coupon-code').value = '';
-    document.getElementById('validation-result').classList.add('hidden');
-
-    // Recarregar stats
-    const merchantId = auth.currentUser?.uid;
-    await loadStats(merchantId);
-
   } catch (error) {
-    console.error('❌ Erro ao resgatar:', error);
-    alert('❌ Erro ao resgatar cupom');
+    console.error('❌ Erro detalhado ao resgatar:', error);
+
+    // Tratamento de erro específico para permissão
+    if (error.code === 'permission-denied') {
+      alert('❌ Erro de Permissão: Verifique se as novas regras foram publicadas no console do Firebase.');
+    } else {
+      alert('❌ Erro ao resgatar cupom. Tente novamente.');
+    }
   }
 };
 

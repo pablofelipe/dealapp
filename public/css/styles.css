@@ -1,24 +1,27 @@
 :root {
-  --primary: #2196F3;
-  --primary-dark: #1976D2;
-  --primary-light: #64B5F6;
-  --primary-gradient: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-  --secondary: #FF5722;
-  --secondary-dark: #E64A19;
-  --secondary-gradient: linear-gradient(135deg, #FF5722 0%, #E64A19 100%);
-  --success: #4CAF50;
-  --danger: #F44336;
-  --warning: #FF9800;
-  --text-primary: #1A1A1A;
-  --text-secondary: #6B7280;
-  --text-light: #9CA3AF;
-  --divider: #E5E7EB;
-  --background: #F9FAFB;
-  --surface: #FFFFFF;
+  --primary: #2196f3;
+  --primary-dark: #1976d2;
+  --primary-light: #64b5f6;
+  --primary-gradient: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  --secondary: #ff5722;
+  --secondary-dark: #e64a19;
+  --secondary-gradient: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);
+  --success: #4caf50;
+  --danger: #f44336;
+  --warning: #ff9800;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b7280;
+  --text-light: #9ca3af;
+  --divider: #e5e7eb;
+  --background: #f9fafb;
+  --surface: #ffffff;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -38,7 +41,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Oxygen, Ubuntu, Cantarell, sans-serif;
   background: var(--background);
   color: var(--text-primary);
   overflow-x: hidden;
@@ -105,17 +110,32 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.9; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Login Screen - Modernizado */
@@ -213,7 +233,12 @@ body {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transition: left 0.5s ease;
 }
 
@@ -259,7 +284,8 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -381,12 +407,24 @@ body {
   animation: fadeInUp 0.5s ease-out backwards;
 }
 
-.deal-card:nth-child(1) { animation-delay: 0.05s; }
-.deal-card:nth-child(2) { animation-delay: 0.1s; }
-.deal-card:nth-child(3) { animation-delay: 0.15s; }
-.deal-card:nth-child(4) { animation-delay: 0.2s; }
-.deal-card:nth-child(5) { animation-delay: 0.25s; }
-.deal-card:nth-child(6) { animation-delay: 0.3s; }
+.deal-card:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.deal-card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.deal-card:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.deal-card:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.deal-card:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.deal-card:nth-child(6) {
+  animation-delay: 0.3s;
+}
 
 .deal-card::before {
   content: '';
@@ -680,17 +718,17 @@ body {
 }
 
 .coupon-card.pending .coupon-status {
-  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
   color: var(--success);
 }
 
 .coupon-card.redeemed .coupon-status {
-  background: linear-gradient(135deg, #F5F5F5 0%, #E0E0E0 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
   color: var(--text-secondary);
 }
 
 .coupon-card.expired .coupon-status {
-  background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
   color: var(--danger);
 }
 
@@ -844,7 +882,7 @@ body {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-  
+
   .app-title {
     font-size: 20px;
   }
@@ -925,11 +963,11 @@ body {
 /* Dark mode support (opcional) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --text-primary: #F9FAFB;
-    --text-secondary: #D1D5DB;
-    --text-light: #9CA3AF;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-light: #9ca3af;
     --background: #111827;
-    --surface: #1F2937;
+    --surface: #1f2937;
     --divider: #374151;
   }
 
@@ -963,8 +1001,8 @@ body {
 }
 
 .distance-badge {
-  background: #E3F2FD;
-  color: #1976D2;
+  background: #e3f2fd;
+  color: #1976d2;
   padding: 6px 12px;
   border-radius: 16px;
   font-weight: 500;
@@ -996,4 +1034,17 @@ body {
 
 .empty-state .btn-primary {
   margin-top: 16px;
+}
+
+/* Badge de distância no card */
+.distance-badge {
+  background: rgba(33, 150, 243, 0.1);
+  color: var(--primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }

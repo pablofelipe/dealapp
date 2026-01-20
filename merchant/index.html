@@ -130,319 +130,339 @@
             <!-- Deals serão inseridos aqui -->
           </div>
         </div>
-        
-<!-- View: Criar Oferta -->
-<div id="view-create-deal" class="view">
-  <div class="view-header">
-    <button class="btn-back" onclick="showView('deals')">← Voltar</button>
-    <h1>Nova Oferta</h1>
-  </div>
 
-  <form id="deal-form" class="form-container">
-    <!-- Título e Descrição -->
-    <div class="form-group">
-      <label>Título da Oferta *</label>
-      <input
-        type="text"
-        id="deal-title"
-        required
-        placeholder="Ex: Pizza Margherita 50% OFF"
-      />
-    </div>
-
-    <div class="form-group">
-      <label>Descrição *</label>
-      <textarea
-        id="deal-description"
-        required
-        rows="3"
-        placeholder="Descreva os detalhes da oferta..."
-      ></textarea>
-    </div>
-
-    <!-- Preços -->
-    <div class="form-row">
-      <div class="form-group">
-        <label>Preço Original (R$) *</label>
-        <input
-          type="number"
-          id="deal-original-price"
-          required
-          step="0.01"
-          min="0"
-          placeholder="40.00"
-        />
-      </div>
-
-      <div class="form-group">
-        <label>Preço com Desconto (R$) *</label>
-        <input
-          type="number"
-          id="deal-price"
-          required
-          step="0.01"
-          min="0"
-          placeholder="20.00"
-        />
-      </div>
-
-      <div class="form-group">
-        <label>Desconto (%)</label>
-        <input
-          type="number"
-          id="deal-discount"
-          readonly
-          placeholder="Calculado automaticamente"
-        />
-      </div>
-    </div>
-
-    <!-- Estoque, Categoria e Validade -->
-    <div class="form-row">
-      <div class="form-group">
-        <label>Estoque Total *</label>
-        <input
-          type="number"
-          id="deal-stock"
-          required
-          min="1"
-          placeholder="100"
-        />
-      </div>
-
-      <div class="form-group">
-        <label>Categoria *</label>
-        <select id="deal-category" required>
-          <option value="">Selecione...</option>
-          <option value="supermarket">Supermercado</option>
-          <option value="pharmacy">Farmácia</option>
-          <option value="bakery">Padaria</option>
-          <option value="restaurant">Restaurante</option>
-          <option value="petshop">Pet Shop</option>
-          <option value="utilities">Utilidades</option>
-          <option value="clothing">Vestuário</option>
-          <option value="electronics">Eletrônicos</option>
-          <option value="services">Serviços</option>
-          <option value="other">Outro</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>Válido até *</label>
-        <input type="date" id="deal-expires" required />
-      </div>
-    </div>
-
-    <!-- LOCALIZAÇÃO (Simplificada) -->
-    <h3
-      style="
-        margin: 32px 0 16px 0;
-        color: #1e293b;
-        padding-top: 16px;
-        border-top: 1px solid #e2e8f0;
-      "
-    >
-      📍 Localização do Estabelecimento
-    </h3>
-
-    <div class="form-group">
-      <label>Endereço Completo *</label>
-      <input
-        type="text"
-        id="deal-address"
-        required
-        placeholder="Av. Paulista, 1000 - Bela Vista, São Paulo - SP, 01310-100"
-      />
-      <small style="color: #64748b; font-size: 0.875rem">
-        Digite endereço completo com CEP. As coordenadas serão geradas
-        automaticamente.
-      </small>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>Bairro *</label>
-        <input
-          type="text"
-          id="deal-neighborhood"
-          required
-          placeholder="Bela Vista"
-        />
-      </div>
-
-      <div class="form-group">
-        <label>Raio de Atendimento *</label>
-        <select id="deal-radius" required>
-          <option value="">Selecione...</option>
-          <option value="1">1 km (muito próximo)</option>
-          <option value="2">2 km</option>
-          <option value="3">3 km</option>
-          <option value="5" selected>5 km (recomendado)</option>
-          <option value="10">10 km</option>
-          <option value="15">15 km</option>
-          <option value="20">20 km (máximo)</option>
-        </select>
-        <small style="color: #64748b; font-size: 0.875rem">
-          Distância máxima que os clientes podem estar para ver sua oferta
-        </small>
-      </div>
-
-      <!-- Campo oculto para tipo de entrega (fixo como retirada) -->
-      <input type="hidden" id="delivery-type" value="pickup" />
-    </div>
-
-    <!-- UPLOAD DE IMAGEM (Novo) -->
-    <h3
-      style="
-        margin: 32px 0 16px 0;
-        color: #1e293b;
-        padding-top: 16px;
-        border-top: 1px solid #e2e8f0;
-      "
-    >
-      🖼️ Imagem da Oferta
-    </h3>
-
-    <div class="form-group">
-      <label>Imagem da Oferta</label>
-
-      <!-- Preview da Imagem -->
-      <div id="image-preview" class="image-preview" style="display: none">
-        <img
-          id="preview-image"
-          src=""
-          alt="Prévia da imagem"
-          style="
-            width: 100%;
-            max-width: 300px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-          "
-        />
-        <button
-          type="button"
-          id="remove-image-btn"
-          class="btn-secondary"
-          style="padding: 6px 12px; font-size: 0.875rem"
-        >
-          ✕ Remover Imagem
-        </button>
-      </div>
-
-      <!-- Upload Container -->
-      <div id="upload-container" class="upload-container">
-        <!-- Upload via Arquivo -->
-        <div class="upload-option" style="margin-bottom: 16px">
-          <label
-            for="deal-image-file"
-            class="upload-label"
-            style="
-              display: block;
-              cursor: pointer;
-              padding: 24px;
-              border: 2px dashed #cbd5e1;
-              border-radius: 12px;
-              text-align: center;
-              transition: all 0.3s;
-            "
-          >
-            <div style="font-size: 2.5rem; margin-bottom: 12px">📁</div>
-            <div style="font-weight: 500; color: #334155; margin-bottom: 8px">
-              Escolher arquivo do computador
-            </div>
-            <div style="font-size: 0.875rem; color: #64748b">
-              Clique para selecionar uma imagem (JPG, PNG - Máx. 2MB)
-            </div>
-            <input
-              type="file"
-              id="deal-image-file"
-              accept="image/*"
-              style="display: none"
-            />
-          </label>
-        </div>
-
-        <!-- Divider -->
-        <div style="text-align: center; margin: 20px 0; position: relative">
-          <span
-            style="
-              background: white;
-              padding: 0 12px;
-              color: #94a3b8;
-              font-size: 0.875rem;
-            "
-            >ou</span
-          >
-          <div
-            style="
-              height: 1px;
-              background: #e2e8f0;
-              position: absolute;
-              top: 50%;
-              left: 0;
-              right: 0;
-              z-index: -1;
-            "
-          ></div>
-        </div>
-
-        <!-- Upload via URL (opcional) -->
-        <div class="upload-option">
-          <div style="margin-bottom: 8px; font-weight: 500; color: #334155">
-            Usar link da internet
+        <!-- View: Criar Oferta -->
+        <div id="view-create-deal" class="view">
+          <div class="view-header">
+            <button class="btn-back" onclick="showView('deals')">
+              ← Voltar
+            </button>
+            <h1>Nova Oferta</h1>
           </div>
-          <input
-            type="url"
-            id="deal-image-url"
-            placeholder="https://exemplo.com/imagem.jpg"
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 1px solid #cbd5e1;
-              border-radius: 8px;
-            "
-          />
-          <small
-            style="
-              color: #64748b;
-              font-size: 0.875rem;
-              display: block;
-              margin-top: 6px;
-            "
-          >
-            Cole o link de uma imagem hospedada online (opcional)
-          </small>
+
+          <form id="deal-form" class="form-container">
+            <!-- Título e Descrição -->
+            <div class="form-group">
+              <label>Título da Oferta *</label>
+              <input
+                type="text"
+                id="deal-title"
+                required
+                placeholder="Ex: Pizza Margherita 50% OFF"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Descrição *</label>
+              <textarea
+                id="deal-description"
+                required
+                rows="3"
+                placeholder="Descreva os detalhes da oferta..."
+              ></textarea>
+            </div>
+
+            <!-- Preços -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Preço Original (R$) *</label>
+                <input
+                  type="number"
+                  id="deal-original-price"
+                  required
+                  step="0.01"
+                  min="0"
+                  placeholder="40.00"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Preço com Desconto (R$) *</label>
+                <input
+                  type="number"
+                  id="deal-price"
+                  required
+                  step="0.01"
+                  min="0"
+                  placeholder="20.00"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Desconto (%)</label>
+                <input
+                  type="number"
+                  id="deal-discount"
+                  readonly
+                  placeholder="Calculado automaticamente"
+                />
+              </div>
+            </div>
+
+            <!-- Estoque, Categoria e Validade -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Estoque Total *</label>
+                <input
+                  type="number"
+                  id="deal-stock"
+                  required
+                  min="1"
+                  placeholder="100"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Categoria *</label>
+                <select id="deal-category" required>
+                  <option value="">Selecione...</option>
+                  <option value="supermarket">Supermercado</option>
+                  <option value="pharmacy">Farmácia</option>
+                  <option value="bakery">Padaria</option>
+                  <option value="restaurant">Restaurante</option>
+                  <option value="petshop">Pet Shop</option>
+                  <option value="utilities">Utilidades</option>
+                  <option value="clothing">Vestuário</option>
+                  <option value="electronics">Eletrônicos</option>
+                  <option value="services">Serviços</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Válido até *</label>
+                <input type="date" id="deal-expires" required />
+              </div>
+            </div>
+
+            <!-- LOCALIZAÇÃO (Simplificada) -->
+            <h3
+              style="
+                margin: 32px 0 16px 0;
+                color: #1e293b;
+                padding-top: 16px;
+                border-top: 1px solid #e2e8f0;
+              "
+            >
+              📍 Localização do Estabelecimento
+            </h3>
+
+            <div class="form-group">
+              <label>Endereço Completo *</label>
+              <input
+                type="text"
+                id="deal-address"
+                required
+                placeholder="Av. Paulista, 1000 - Bela Vista, São Paulo - SP, 01310-100"
+              />
+              <small style="color: #64748b; font-size: 0.875rem">
+                Digite endereço completo com CEP. As coordenadas serão geradas
+                automaticamente.
+              </small>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Bairro *</label>
+                <input
+                  type="text"
+                  id="deal-neighborhood"
+                  required
+                  placeholder="Bela Vista"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Raio de Atendimento *</label>
+                <select id="deal-radius" required>
+                  <option value="">Selecione...</option>
+                  <option value="1">1 km (muito próximo)</option>
+                  <option value="2">2 km</option>
+                  <option value="3">3 km</option>
+                  <option value="5" selected>5 km (recomendado)</option>
+                  <option value="10">10 km</option>
+                  <option value="15">15 km</option>
+                  <option value="20">20 km (máximo)</option>
+                </select>
+                <small style="color: #64748b; font-size: 0.875rem">
+                  Distância máxima que os clientes podem estar para ver sua
+                  oferta
+                </small>
+              </div>
+
+              <!-- Campo oculto para tipo de entrega (fixo como retirada) -->
+              <input type="hidden" id="delivery-type" value="pickup" />
+            </div>
+
+            <!-- UPLOAD DE IMAGEM (Novo) -->
+            <h3
+              style="
+                margin: 32px 0 16px 0;
+                color: #1e293b;
+                padding-top: 16px;
+                border-top: 1px solid #e2e8f0;
+              "
+            >
+              🖼️ Imagem da Oferta
+            </h3>
+
+            <div class="form-group">
+              <label>Imagem da Oferta</label>
+
+              <!-- Preview da Imagem -->
+              <div
+                id="image-preview"
+                class="image-preview"
+                style="display: none"
+              >
+                <img
+                  id="preview-image"
+                  src=""
+                  alt="Prévia da imagem"
+                  style="
+                    width: 100%;
+                    max-width: 300px;
+                    border-radius: 8px;
+                    margin-bottom: 12px;
+                  "
+                />
+                <button
+                  type="button"
+                  id="remove-image-btn"
+                  class="btn-secondary"
+                  style="padding: 6px 12px; font-size: 0.875rem"
+                >
+                  ✕ Remover Imagem
+                </button>
+              </div>
+
+              <!-- Upload Container -->
+              <div id="upload-container" class="upload-container">
+                <!-- Upload via Arquivo -->
+                <div class="upload-option" style="margin-bottom: 16px">
+                  <label
+                    for="deal-image-file"
+                    class="upload-label"
+                    style="
+                      display: block;
+                      cursor: pointer;
+                      padding: 24px;
+                      border: 2px dashed #cbd5e1;
+                      border-radius: 12px;
+                      text-align: center;
+                      transition: all 0.3s;
+                    "
+                  >
+                    <div style="font-size: 2.5rem; margin-bottom: 12px">📁</div>
+                    <div
+                      style="
+                        font-weight: 500;
+                        color: #334155;
+                        margin-bottom: 8px;
+                      "
+                    >
+                      Escolher arquivo do computador
+                    </div>
+                    <div style="font-size: 0.875rem; color: #64748b">
+                      Clique para selecionar uma imagem (JPG, PNG - Máx. 2MB)
+                    </div>
+                    <input
+                      type="file"
+                      id="deal-image-file"
+                      accept="image/*"
+                      style="display: none"
+                    />
+                  </label>
+                </div>
+
+                <!-- Divider -->
+                <div
+                  style="text-align: center; margin: 20px 0; position: relative"
+                >
+                  <span
+                    style="
+                      background: white;
+                      padding: 0 12px;
+                      color: #94a3b8;
+                      font-size: 0.875rem;
+                    "
+                    >ou</span
+                  >
+                  <div
+                    style="
+                      height: 1px;
+                      background: #e2e8f0;
+                      position: absolute;
+                      top: 50%;
+                      left: 0;
+                      right: 0;
+                      z-index: -1;
+                    "
+                  ></div>
+                </div>
+
+                <!-- Upload via URL (opcional) -->
+                <div class="upload-option">
+                  <div
+                    style="margin-bottom: 8px; font-weight: 500; color: #334155"
+                  >
+                    Usar link da internet
+                  </div>
+                  <input
+                    type="url"
+                    id="deal-image-url"
+                    placeholder="https://exemplo.com/imagem.jpg"
+                    style="
+                      width: 100%;
+                      padding: 12px;
+                      border: 1px solid #cbd5e1;
+                      border-radius: 8px;
+                    "
+                  />
+                  <small
+                    style="
+                      color: #64748b;
+                      font-size: 0.875rem;
+                      display: block;
+                      margin-top: 6px;
+                    "
+                  >
+                    Cole o link de uma imagem hospedada online (opcional)
+                  </small>
+                </div>
+              </div>
+
+              <!-- Status do Upload -->
+              <div
+                id="upload-status"
+                style="
+                  display: none;
+                  padding: 12px;
+                  background: #f0f9ff;
+                  border-radius: 8px;
+                  margin-top: 12px;
+                "
+              >
+                <div style="display: flex; align-items: center; gap: 8px">
+                  <div class="spinner-small"></div>
+                  <span style="color: #0369a1">Processando imagem...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="showView('deals')"
+              >
+                Cancelar
+              </button>
+              <button type="submit" class="btn-primary">Publicar Oferta</button>
+            </div>
+          </form>
         </div>
-      </div>
-
-      <!-- Status do Upload -->
-      <div
-        id="upload-status"
-        style="
-          display: none;
-          padding: 12px;
-          background: #f0f9ff;
-          border-radius: 8px;
-          margin-top: 12px;
-        "
-      >
-        <div style="display: flex; align-items: center; gap: 8px">
-          <div class="spinner-small"></div>
-          <span style="color: #0369a1">Processando imagem...</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Botões de Ação -->
-    <div class="form-actions">
-      <button type="button" class="btn-secondary" onclick="showView('deals')">
-        Cancelar
-      </button>
-      <button type="submit" class="btn-primary">Publicar Oferta</button>
-    </div>
-  </form>
-</div>
-
 
         <!-- View: Validar Cupom -->
         <div id="view-validate" class="view">

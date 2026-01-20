@@ -24,10 +24,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "condominiumId",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "expiresAt",
           "order": "ASCENDING"
         },

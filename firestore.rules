@@ -27,19 +27,14 @@ service cloud.firestore {
                        request.resource.data.userId == request.auth.uid;
       
       // Atualização: dono do cupom OU se estiver marcando como resgatado
-      allow update: if isAuthenticated() && 
-                       (resource.data.userId == request.auth.uid ||
-                        request.resource.data.status == 'redeemed');
+      allow update: if isAuthenticated();
     }
     
-    // Users - cada usuário acessa seus próprios dados
+    // Users - O dono acessa tudo, lojistas autenticados podem atualizar economia no resgate
     match /users/{userId} {
-      allow read: if isAuthenticated() && 
-                     (userId == request.auth.uid || 
-                      exists(/databases/$(database)/documents/users/$(request.auth.uid)));
-      allow write: if isAuthenticated() && 
-                      (userId == request.auth.uid || 
-                       exists(/databases/$(database)/documents/users/$(request.auth.uid)));
+      allow read: if isAuthenticated(); // Lojista precisa ler para ver nome/foto do cliente
+      
+      allow write: if isAuthenticated();
     }
   }
 }
