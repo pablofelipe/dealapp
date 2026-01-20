@@ -189,10 +189,13 @@ body {
 }
 
 .login-content {
-  background: var(--surface);
-  padding: 32px 24px;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .login-description {
@@ -203,7 +206,7 @@ body {
 }
 
 .btn-primary {
-  background: var(--primary-gradient);
+  background: linear-gradient(135deg, #4285f4 0%, #2b6ed9 100%);
   color: white;
   border: none;
   padding: 16px 32px;
@@ -216,7 +219,7 @@ body {
   justify-content: center;
   gap: 12px;
   transition: all 0.3s ease;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
   width: 100%;
   min-height: 52px;
   position: relative;
@@ -241,7 +244,8 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+  filter: brightness(1.1);
 }
 
 .btn-primary:hover::before {
@@ -927,4 +931,8 @@ body {
   .upload-container {
     padding: 16px;
   }
+}
+
+#google-login-btn {
+  margin-top: 24px;
 }

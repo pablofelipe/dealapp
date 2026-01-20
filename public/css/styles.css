@@ -192,9 +192,9 @@ body {
 }
 
 .login-content {
-  background: var(--surface);
-  padding: 32px 24px;
-  border-radius: var(--radius-xl);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
   box-shadow: var(--shadow-xl);
 }
 
@@ -1047,4 +1047,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+#google-login-btn {
+  margin-top: 24px;
 }
