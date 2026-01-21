@@ -36,5 +36,9 @@ service cloud.firestore {
       
       allow write: if isAuthenticated();
     }
+    
+    match /merchants/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
