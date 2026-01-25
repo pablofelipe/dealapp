@@ -936,3 +936,34 @@ body {
 #google-login-btn {
   margin-top: 24px;
 }
+
+/* Estilos para a view de edição */
+.cep-help {
+  display: block;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Destaque para campos alterados */
+.form-group input.changed,
+.form-group select.changed {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+/* Indicador visual de campos alterados */
+.field-changed-indicator {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 50%;
+  display: none;
+}
+
+.form-group.changed .field-changed-indicator {
+  display: block;
+}

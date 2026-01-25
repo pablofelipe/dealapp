@@ -2,6 +2,7 @@ import { observeAuthState, loginWithGoogle, logout } from './auth.js';
 import { loadMerchantDeals, setupDealForm } from './deals.js';
 import { setupCouponValidation, loadStats } from './coupons.js';
 import { checkMerchantProfile, saveMerchantProfile } from './merchant.js';
+import { initializeEditMerchant, loadMerchantForEdit } from './edit-merchant.js';
 
 // Elementos DOM
 const loading = document.getElementById('loading');
@@ -28,7 +29,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setupDiscountCalculator();
   setupDealFormWithMerchantData();
+  initializeEditMerchant();
+  initializeBadgeOnLoad();
 });
+
+// Inicializar badge quando a página carrega
+function initializeMerchantBadge() {
+  console.log('🔍 Inicializando badge do merchant...');
+
+  // Tentar carregar do localStorage
+  const cachedMerchant = loadMerchantFromLocalStorage();
+
+  // Se não tiver usuário logado mas tiver dados em cache, mostrar
+  if (!currentUser && cachedMerchant) {
+    console.log('🏪 Mostrando badge do cache (usuário não logado)');
+    updateMerchantInfo(cachedMerchant);
+  }
+}
+
+// Chamar após o DOM estar pronto
+document.addEventListener('DOMContentLoaded', initializeMerchantBadge);
 
 // ========== SETUP DE EVENTOS ==========
 
@@ -235,30 +255,29 @@ async function handleRegisterSubmit() {
 
 async function handleAuthStateChange(user) {
   showLoading(false);
+  console.log('🔐 Estado de autenticação alterado:', user?.email);
 
   if (user) {
     currentUser = user;
+    console.log('👤 Usuário atual:', user.email);
 
-    // Verificar se já tem cadastro como lojista
     try {
+      // Verificar se já tem cadastro como lojista
       const merchantProfile = await checkMerchantProfile(user.uid);
+      console.log('📋 Perfil do merchant encontrado?', !!merchantProfile);
 
       if (merchantProfile) {
         // Tem cadastro completo
         currentMerchant = merchantProfile;
+
+        updateMerchantInfo(merchantProfile);
+
         showPanelScreen();
         await loadInitialData();
       } else {
-        // Verificar se tem dados no localStorage (para desenvolvimento)
-        const localMerchant = localStorage.getItem('merchantProfile');
-        if (localMerchant) {
-          currentMerchant = JSON.parse(localMerchant);
-          showPanelScreen();
-          await loadInitialData();
-        } else {
-          // Primeiro acesso - mostrar cadastro
-          showRegisterScreen();
-        }
+        // Primeiro acesso - mostrar cadastro
+        console.log('📝 Primeiro acesso, mostrando cadastro');
+        showRegisterScreen();
       }
     } catch (error) {
       console.error('❌ Erro ao verificar perfil:', error);
@@ -266,28 +285,69 @@ async function handleAuthStateChange(user) {
     }
 
   } else {
+    console.log('👤 Usuário deslogado');
+
+    // Limpar cache ao deslogar
+    localStorage.removeItem('currentMerchant');
+    window.currentMerchant = null;
+
     showLoginScreen();
   }
 }
 
-// Na função showPanelScreen ou handleNewLogin, adicione:
-function updateMerchantInfo(merchantData) {
-  if (!merchantData) return;
-
-  // Atualizar badge do merchant
-  const merchantBadge = document.getElementById('merchant-name-badge');
-  if (merchantBadge && merchantData.tradingName) {
-    merchantBadge.textContent = merchantData.tradingName;
-    merchantBadge.title = `CNPJ: ${merchantData.cnpj || 'Não informado'}`;
+// ========== GERENCIAMENTO DO MERCHANT BADGE ==========
+window.updateMerchantInfo = function (merchantData) {
+  // Verificação básica de segurança
+  if (!merchantData || typeof merchantData !== 'object') {
+    console.warn('updateMerchantInfo: dados inválidos');
+    return false;
   }
 
-  // Armazenar no objeto global para uso em outros módulos
+  console.log('ℹ️ updateMerchantInfo chamado para:', merchantData.tradingName);
+
+  // Atualizar badge do merchant (APENAS SE NECESSÁRIO)
+  const merchantBadge = document.getElementById('merchant-name-badge');
+  if (merchantBadge) {
+    const newName = merchantData.tradingName || merchantData.businessName || 'Lojista';
+
+    // VERIFICAR SE JÁ ESTÁ COM O NOME CORRETO
+    if (merchantBadge.textContent === newName) {
+      console.log('✓ Badge já está correto:', newName);
+    } else {
+      merchantBadge.textContent = newName;
+      merchantBadge.title = `CNPJ: ${merchantData.cnpj || 'Não informado'}`;
+      console.log('✓ Badge atualizado:', newName);
+    }
+  }
+
+  // Atualizar variável global (simples)
   window.currentMerchant = merchantData;
 
-  // Chamar função do deals.js para atualizar UI
-  if (window.updateMerchantUI) {
-    window.updateMerchantUI(merchantData);
+  // Salvar no localStorage (sem eventos)
+  try {
+    localStorage.setItem('currentMerchant', JSON.stringify(merchantData));
+    console.log('✓ Dados salvos no localStorage');
+  } catch (e) {
+    console.error('Erro ao salvar no localStorage:', e);
   }
+
+  return true;
+};
+
+// Adicione esta função para carregar do localStorage
+function loadMerchantFromLocalStorage() {
+  try {
+    const saved = localStorage.getItem('currentMerchant');
+    if (saved) {
+      const merchant = JSON.parse(saved);
+      console.log('📂 Merchant carregado do localStorage:', merchant.tradingName);
+      updateMerchantInfo(merchant);
+      return merchant;
+    }
+  } catch (e) {
+    console.error('❌ Erro ao carregar do localStorage:', e);
+  }
+  return null;
 }
 
 // Modifique handleNewLogin ou onde você recebe os dados do merchant:
@@ -336,20 +396,6 @@ function showRegisterScreen() {
   registerScreen.classList.remove('hidden');
 }
 
-function showPanelScreen() {
-  hideAllScreens();
-  panel.classList.remove('hidden');
-
-  // Atualizar informações do usuário
-  if (currentUser) {
-    userPhoto.src = currentUser.photoURL || '/public/assets/icons/default-avatar.png';
-    userName.textContent = currentUser.displayName || currentUser.email || 'Usuário';
-  }
-
-  // Mostrar view inicial
-  showView('deals');
-}
-
 function hideAllScreens() {
   loginScreen.classList.add('hidden');
   registerScreen.classList.add('hidden');
@@ -367,15 +413,32 @@ function showLoading(show) {
 // ========== NAVEGAÇÃO DO PAINEL ==========
 
 window.showView = function (viewName) {
+  console.log(`🔄 Mudando para view: ${viewName}`);
+
   // Atualizar navegação
   navButtons.forEach(btn => btn.classList.remove('active'));
-  document.querySelector(`[data-view="${viewName}"]`)?.classList.add('active');
+  const activeBtn = document.querySelector(`[data-view="${viewName}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
 
   // Mostrar view
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const targetView = document.getElementById(`view-${viewName}`);
   if (targetView) {
     targetView.classList.add('active');
+  }
+
+  // Atualização simples do badge (só se tiver dados)
+  if (window.currentMerchant) {
+    const badge = document.getElementById('merchant-name-badge');
+    if (badge && window.currentMerchant.tradingName) {
+      // Verificar se já está correto
+      if (badge.textContent !== window.currentMerchant.tradingName) {
+        badge.textContent = window.currentMerchant.tradingName;
+        console.log('✓ Badge corrigido na view:', viewName);
+      }
+    }
   }
 
   // Carregar dados específicos da view
@@ -385,6 +448,15 @@ window.showView = function (viewName) {
       break;
     case 'stats':
       if (currentUser) loadStats(currentUser.uid);
+      break;
+    case 'edit-merchant':
+      if (currentUser) {
+        loadMerchantForEdit(currentUser.uid)
+          .then(merchant => {
+            console.log('✅ Dados carregados para edição:', merchant?.tradingName);
+          })
+          .catch(console.error);
+      }
       break;
   }
 };
@@ -590,6 +662,150 @@ if (!document.querySelector('#app-notification-styles')) {
     }
   `;
   document.head.appendChild(style);
+}
+
+let isUpdatingMerchant = false;
+
+window.updateMerchantInfo = function (merchantData, forceUpdate = false) {
+
+  if (isUpdatingMerchant) {
+    console.log('⚠️ updateMerchantInfo já em execução, ignorando chamada...');
+    return;
+  }
+  isUpdatingMerchant = true;
+
+  try {
+
+    // Verificação básica
+    if (!merchantData || typeof merchantData !== 'object') {
+      console.log('❌ updateMerchantInfo: Dados inválidos', merchantData);
+      return;
+    }
+
+    console.log('🔄 updateMerchantInfo chamada para:', merchantData.tradingName || merchantData.businessName);
+
+    // Verificar se é o mesmo merchant (para evitar atualizações desnecessárias)
+    const currentBadgeText = document.getElementById('merchant-name-badge')?.textContent;
+    const newDisplayName = merchantData.tradingName || merchantData.businessName || 'Lojista';
+
+    if (!forceUpdate && currentBadgeText === newDisplayName) {
+      console.log('ℹ️ Badge já está atualizado, ignorando...');
+      return;
+    }
+
+    const merchantBadge = document.getElementById('merchant-name-badge');
+    if (merchantBadge) {
+      console.log('📝 Atualizando badge de', currentBadgeText, 'para', newDisplayName);
+      merchantBadge.textContent = newDisplayName;
+      merchantBadge.title = `CNPJ: ${merchantData.cnpj || 'Não informado'}`;
+      console.log('✅ Badge atualizado com sucesso');
+    } else {
+      console.log('❌ Elemento merchant-name-badge não encontrado');
+    }
+
+    // Atualizar variável global (sem disparar eventos)
+    window.currentMerchant = merchantData;
+
+    // Salvar no localStorage (operação segura)
+    try {
+      localStorage.setItem('currentMerchant', JSON.stringify(merchantData));
+      console.log('💾 Merchant salvo no localStorage');
+    } catch (e) {
+      console.error('❌ Erro ao salvar no localStorage:', e);
+    }
+
+  } finally {
+    isUpdatingMerchant = false;
+  }
+};
+
+// Função auxiliar para obter o merchant atual
+window.getCurrentMerchant = function () {
+  return window.currentMerchant;
+};
+
+async function syncMerchantData() {
+  if (!currentUser || !currentUser.uid) {
+    console.log('⚠️ syncMerchantData: Nenhum usuário logado');
+    return;
+  }
+
+  try {
+    console.log('🔄 Sincronizando dados do merchant...');
+
+    // Buscar dados atualizados do Firestore
+    const { checkMerchantProfile } = await import('./merchant.js');
+    const merchantProfile = await checkMerchantProfile(currentUser.uid);
+
+    if (merchantProfile) {
+      console.log('✅ Dados sincronizados do Firestore:', merchantProfile.tradingName);
+
+      // Atualizar localmente
+      currentMerchant = merchantProfile;
+
+      // Atualizar badge
+      if (typeof window.updateMerchantInfo === 'function') {
+        window.updateMerchantInfo(merchantProfile);
+      } else {
+        // Fallback: atualizar diretamente
+        const badge = document.getElementById('merchant-name-badge');
+        if (badge && merchantProfile.tradingName) {
+          badge.textContent = merchantProfile.tradingName;
+        }
+      }
+
+      return merchantProfile;
+    }
+  } catch (error) {
+    console.error('❌ Erro ao sincronizar merchant:', error);
+  }
+
+  return null;
+}
+
+function showPanelScreen() {
+  hideAllScreens();
+  panel.classList.remove('hidden');
+
+  console.log('🏪 Mostrando painel, usuário:', currentUser?.email);
+
+  // Atualizar informações do usuário
+  if (currentUser) {
+    userPhoto.src = currentUser.photoURL || '/public/assets/icons/default-avatar.png';
+    userName.textContent = currentUser.displayName || currentUser.email || 'Usuário';
+  }
+
+  if (currentUser) {
+    syncMerchantData().then(merchant => {
+      if (merchant) {
+        console.log('✅ Painel sincronizado com dados atualizados');
+      }
+    });
+  }
+
+  // Mostrar view inicial
+  showView('deals');
+}
+
+function initializeBadgeOnLoad() {
+  console.log('🔍 Inicializando badge no carregamento...');
+
+  // Tentar carregar do localStorage
+  try {
+    const savedMerchant = localStorage.getItem('currentMerchant');
+    if (savedMerchant) {
+      const merchant = JSON.parse(savedMerchant);
+      const badge = document.getElementById('merchant-name-badge');
+
+      if (badge && merchant.tradingName) {
+        badge.textContent = merchant.tradingName;
+        badge.title = `CNPJ: ${merchant.cnpj || 'Não informado'}`;
+        console.log('✓ Badge inicializado do localStorage:', merchant.tradingName);
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao inicializar badge:', e);
+  }
 }
 
 export { currentUser, currentMerchant };

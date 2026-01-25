@@ -167,10 +167,33 @@
               <label>Estado *</label>
               <select id="merchant-state" required>
                 <option value="">Selecione...</option>
-                <option value="SP">São Paulo</option>
-                <option value="RJ">Rio de Janeiro</option>
+                <option value="AC">Acre</option>
+                <option value="AL">Alagoas</option>
+                <option value="AP">Amapá</option>
+                <option value="AM">Amazonas</option>
+                <option value="BA">Bahia</option>
+                <option value="CE">Ceará</option>
+                <option value="DF">Distrito Federal</option>
+                <option value="ES">Espírito Santo</option>
+                <option value="GO">Goiás</option>
+                <option value="MA">Maranhão</option>
+                <option value="MT">Mato Grosso</option>
+                <option value="MS">Mato Grosso do Sul</option>
                 <option value="MG">Minas Gerais</option>
-                <!-- outros estados -->
+                <option value="PA">Pará</option>
+                <option value="PB">Paraíba</option>
+                <option value="PR">Paraná</option>
+                <option value="PE">Pernambuco</option>
+                <option value="PI">Piauí</option>
+                <option value="RJ">Rio de Janeiro</option>
+                <option value="RN">Rio Grande do Norte</option>
+                <option value="RS">Rio Grande do Sul</option>
+                <option value="RO">Rondônia</option>
+                <option value="RR">Roraima</option>
+                <option value="SC">Santa Catarina</option>
+                <option value="SP">São Paulo</option>
+                <option value="SE">Sergipe</option>
+                <option value="TO">Tocantins</option>
               </select>
             </div>
           </div>
@@ -329,6 +352,10 @@
           <button class="nav-btn" data-view="stats">
             <span>📊</span>
             <span>Estatísticas</span>
+          </button>
+          <button class="nav-btn" data-view="edit-merchant">
+            <span>⚙️</span>
+            <span>Editar Cadastro</span>
           </button>
         </nav>
 
@@ -718,6 +745,254 @@
             </div>
           </div>
         </div>
+
+        <!-- View: Editar Cadastro -->
+        <div id="view-edit-merchant" class="view">
+          <div class="view-header">
+            <button class="btn-back" onclick="showView('deals')">
+              ← Voltar
+            </button>
+            <h1>Editar Cadastro do Lojista</h1>
+          </div>
+
+          <form id="edit-merchant-form" class="form-container">
+            <!-- Dados da Empresa -->
+            <h3>📋 Dados da Empresa</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>CNPJ *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-cnpj"
+                  required
+                  placeholder="00.000.000/0000-00"
+                  maxlength="18"
+                />
+              </div>
+              <div class="form-group">
+                <label>Razão Social *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-business-name"
+                  required
+                  placeholder="Empresa LTDA"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nome Fantasia *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-trading-name"
+                  required
+                  placeholder="Nome do Estabelecimento"
+                />
+              </div>
+              <div class="form-group">
+                <label>Categoria do Negócio *</label>
+                <select id="edit-merchant-category" required>
+                  <option value="">Selecione...</option>
+                  <option value="supermarket">Supermercado</option>
+                  <option value="pharmacy">Farmácia</option>
+                  <option value="bakery">Padaria</option>
+                  <option value="restaurant">Restaurante</option>
+                  <option value="petshop">Pet Shop</option>
+                  <option value="utilities">Utilidades</option>
+                  <option value="clothing">Vestuário</option>
+                  <option value="electronics">Eletrônicos</option>
+                  <option value="services">Serviços</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Localização -->
+            <h3>📍 Localização do Estabelecimento</h3>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>CEP *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-cep"
+                  required
+                  placeholder="00000-000"
+                  maxlength="9"
+                />
+                <small
+                  class="cep-help"
+                  style="color: #64748b; font-size: 0.85rem"
+                >
+                  Digite o CEP e os demais campos serão preenchidos
+                  automaticamente
+                </small>
+              </div>
+              <div class="form-group">
+                <label>Estado *</label>
+                <select id="edit-merchant-state" required>
+                  <option value="">Selecione...</option>
+                  <option value="AC">Acre</option>
+                  <option value="AL">Alagoas</option>
+                  <option value="AP">Amapá</option>
+                  <option value="AM">Amazonas</option>
+                  <option value="BA">Bahia</option>
+                  <option value="CE">Ceará</option>
+                  <option value="DF">Distrito Federal</option>
+                  <option value="ES">Espírito Santo</option>
+                  <option value="GO">Goiás</option>
+                  <option value="MA">Maranhão</option>
+                  <option value="MT">Mato Grosso</option>
+                  <option value="MS">Mato Grosso do Sul</option>
+                  <option value="MG">Minas Gerais</option>
+                  <option value="PA">Pará</option>
+                  <option value="PB">Paraíba</option>
+                  <option value="PR">Paraná</option>
+                  <option value="PE">Pernambuco</option>
+                  <option value="PI">Piauí</option>
+                  <option value="RJ">Rio de Janeiro</option>
+                  <option value="RN">Rio Grande do Norte</option>
+                  <option value="RS">Rio Grande do Sul</option>
+                  <option value="RO">Rondônia</option>
+                  <option value="RR">Roraima</option>
+                  <option value="SC">Santa Catarina</option>
+                  <option value="SP">São Paulo</option>
+                  <option value="SE">Sergipe</option>
+                  <option value="TO">Tocantins</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Cidade *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-city"
+                  required
+                  placeholder="São Paulo"
+                />
+              </div>
+              <div class="form-group">
+                <label>Bairro *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-neighborhood"
+                  required
+                  placeholder="Bela Vista"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Endereço *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-address"
+                  required
+                  placeholder="Av. Paulista"
+                />
+              </div>
+              <div class="form-group">
+                <label>Número *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-number"
+                  required
+                  placeholder="1000"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Complemento</label>
+              <input
+                type="text"
+                id="edit-merchant-complement"
+                placeholder="Sala 101, Bloco A"
+              />
+            </div>
+
+            <!-- Raio de Atendimento -->
+            <div class="form-group">
+              <label>Raio de Atendimento Padrão (km) *</label>
+              <select id="edit-merchant-radius" required>
+                <option value="1">1 km</option>
+                <option value="2">2 km</option>
+                <option value="3">3 km</option>
+                <option value="5">5 km (recomendado)</option>
+                <option value="10">10 km</option>
+                <option value="15">15 km</option>
+                <option value="20">20 km (máximo)</option>
+              </select>
+              <small style="color: #64748b">
+                Distância máxima que os clientes podem estar para ver suas
+                ofertas
+              </small>
+            </div>
+
+            <!-- Contato -->
+            <h3>📞 Dados de Contato</h3>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Telefone do Estabelecimento *</label>
+                <input
+                  type="tel"
+                  id="edit-merchant-phone"
+                  required
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div class="form-group">
+                <label>Nome do Responsável *</label>
+                <input
+                  type="text"
+                  id="edit-merchant-responsible-name"
+                  required
+                  placeholder="João da Silva"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>E-mail do Responsável *</label>
+                <input
+                  type="email"
+                  id="edit-merchant-responsible-email"
+                  required
+                  placeholder="joao@empresa.com"
+                />
+              </div>
+              <div class="form-group">
+                <label>Celular do Responsável *</label>
+                <input
+                  type="tel"
+                  id="edit-merchant-responsible-phone"
+                  required
+                  placeholder="(11) 98888-8888"
+                />
+              </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="showView('deals')"
+              >
+                Cancelar
+              </button>
+              <button type="submit" class="btn-primary">
+                Salvar Alterações
+              </button>
+            </div>
+          </form>
+        </div>
       </main>
     </div>
 
@@ -725,6 +1000,7 @@
     <script type="module" src="/merchant/js/firebase-config.js"></script>
     <script type="module" src="/merchant/js/auth.js"></script>
     <script type="module" src="/merchant/js/merchant.js"></script>
+    <script type="module" src="/merchant/js/edit-merchant.js"></script>
     <script type="module" src="/merchant/js/deals.js"></script>
     <script type="module" src="/merchant/js/coupons.js"></script>
     <script type="module" src="/merchant/js/app.js"></script>
