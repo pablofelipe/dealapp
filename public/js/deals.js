@@ -7,7 +7,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Configurações do Radar
-const RAIO_MAXIMO_KM = 10; // Alcance do radar
+const RAIO_MAXIMO_KM = 15; // Alcance do radar
 const TIMEOUT_GPS = 5000; // 5 segundos para desistir do GPS
 
 export async function loadNearbyDeals() {
@@ -26,10 +26,14 @@ export async function loadNearbyDeals() {
 
     // Lógica de Query
     if (position) {
-      q = query(dealsRef, where('status', '==', 'active'));
+      q = query(
+        dealsRef,
+        where('status', '==', 'active'));
     } else {
-      // IMPORTANTE: Verifique se no Firestore o campo é 'city' ou 'merchantLocation.city'
-      q = query(dealsRef, where('status', '==', 'active'));
+      q = query(
+        dealsRef,
+        where('status', '==', 'active')
+      );
       console.log('🔍 Buscando todas as ofertas ativas (Fallback)');
     }
 
@@ -37,14 +41,65 @@ export async function loadNearbyDeals() {
 
     let deals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
 
+    deals = deals.filter(deal => {
+      if (!deal.expiresAt) return true;
+
+      try {
+        // Converter Timestamp do Firestore para Date
+        let expiresDate;
+        if (deal.expiresAt.toDate) {
+          expiresDate = deal.expiresAt.toDate();
+        } else if (deal.expiresAt instanceof Date) {
+          expiresDate = deal.expiresAt;
+        } else {
+          expiresDate = new Date(deal.expiresAt);
+        }
+
+        // Data atual
+        const now = new Date();
+
+        // ✅ CORREÇÃO: Usar timezone offset dinâmico
+        // O Firestore Timestamp é em UTC, precisamos ajustar para o fuso local
+        const timezoneOffsetMinutes = now.getTimezoneOffset();
+
+        // Converter expiresDate (UTC) para horário local
+        const expiresLocal = new Date(expiresDate.getTime() - (timezoneOffsetMinutes * 60 * 1000));
+
+        // Converter now para UTC para comparação correta
+        const nowUTC = new Date(now.getTime() + (timezoneOffsetMinutes * 60 * 1000));
+
+        // Debug para verificar
+        console.log(`📍 ${deal.title || deal.id}:`);
+        console.log(`   expiresDate (UTC): ${expiresDate.toISOString()}`);
+        console.log(`   expiresLocal: ${expiresLocal.toISOString()}`);
+        console.log(`   nowUTC: ${nowUTC.toISOString()}`);
+        console.log(`   timezoneOffset: ${timezoneOffsetMinutes}min`);
+        console.log(`   válida? ${expiresDate >= nowUTC}`);
+
+        // Comparar ambos em UTC
+        return expiresDate >= nowUTC;
+
+      } catch (e) {
+        console.error(`❌ Erro ao verificar data da oferta ${deal.id}:`, e);
+        return false;
+      }
+    });
+
+    console.log(`✅ ${deals.length} ofertas válidas após filtro de data`);
+
     if (position && deals.length > 0) {
       const { latitude, longitude } = position.coords;
 
       deals = deals.map(deal => {
+
         const loc = deal.merchantLocation || deal.location;
         if (!loc || !loc.latitude) return { ...deal, distance: 999 };
 
-        console.log(`latitude: ${latitude}, longitude: ${longitude}, loc.latitude: ${loc.latitude}, loc.longitude: ${loc.longitude}`);
+        //console.log(`latitude: ${latitude}, longitude: ${longitude}, loc.latitude: ${loc.latitude}, loc.longitude: ${loc.longitude}`);
+
+        console.log(`oferta: ${JSON.stringify(deal)}`);
+
+        console.log(`position: ${JSON.stringify(position)}`);
 
         const dist = calcularDistancia(latitude, longitude, loc.latitude, loc.longitude);
         return {
@@ -57,7 +112,9 @@ export async function loadNearbyDeals() {
       deals.sort((a, b) => a.distance - b.distance);
     }
 
-    console.log(`position: ${JSON.stringify(position)}`);
+    //console.log(`position: ${JSON.stringify(position)}`);
+
+    console.log(`✅ ${deals.length} ofertas válidas após coordenadas`);
 
     // Só chama o render se deals for um array (mesmo que vazio)
     renderDeals(deals);

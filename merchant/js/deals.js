@@ -9,7 +9,8 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
-  orderBy
+  orderBy,
+  getDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Carregar ofertas do lojista
@@ -31,7 +32,6 @@ export async function loadMerchantDeals(merchantId) {
       ...doc.data()
     }));
 
-    // Ordenar por data no cliente
     deals.sort((a, b) => {
       const dateA = a.createdAt?.toDate() || new Date(0);
       const dateB = b.createdAt?.toDate() || new Date(0);
@@ -44,6 +44,58 @@ export async function loadMerchantDeals(merchantId) {
   } catch (error) {
     console.error('❌ Erro ao carregar ofertas:', error);
     return [];
+  }
+}
+
+// Buscar dados do merchant
+async function getMerchantData(merchantId) {
+  try {
+    const merchantRef = doc(db, 'merchants', merchantId);
+    const merchantSnap = await getDoc(merchantRef);
+
+    if (!merchantSnap.exists()) {
+      throw new Error('Perfil do lojista não encontrado. Complete seu cadastro primeiro.');
+    }
+
+    return merchantSnap.data();
+  } catch (error) {
+    console.error('❌ Erro ao buscar dados do merchant:', error);
+    throw error;
+  }
+}
+
+// Atualizar informações do merchant na UI
+export async function updateMerchantUI(merchantData) {
+  try {
+    // Atualizar badge do merchant na sidebar
+    const merchantBadge = document.getElementById('merchant-name-badge');
+    if (merchantBadge && merchantData.tradingName) {
+      merchantBadge.textContent = merchantData.tradingName;
+      merchantBadge.title = merchantData.businessName || merchantData.tradingName;
+    }
+
+    // Atualizar informações de localização na view de criar oferta
+    const locationInfo = document.getElementById('merchant-location-info');
+    if (locationInfo && merchantData.location) {
+      const loc = merchantData.location;
+      const addressParts = [];
+
+      if (loc.address) addressParts.push(loc.address);
+      if (loc.number) addressParts.push(loc.number);
+      if (loc.complement) addressParts.push(loc.complement);
+      if (loc.neighborhood) addressParts.push(loc.neighborhood);
+      if (loc.city) addressParts.push(loc.city);
+      if (loc.state) addressParts.push(loc.state);
+
+      locationInfo.textContent = addressParts.join(', ');
+
+      if (loc.deliveryRadius) {
+        locationInfo.textContent += ` • Raio: ${loc.deliveryRadius} km`;
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao atualizar UI do merchant:', error);
   }
 }
 
@@ -78,6 +130,12 @@ function createDealItem(deal) {
   const expiresAt = deal.expiresAt?.toDate() || new Date();
   const isExpired = expiresAt < new Date();
   const isLowStock = deal.stockAvailable < 10;
+  const isPaused = deal.status === 'paused';
+
+  // Formatar localização
+  const locationInfo = deal.merchantLocation ?
+    `${deal.merchantLocation.neighborhood || ''} • ${deal.merchantLocation.city || ''} • Raio: ${deal.merchantLocation.deliveryRadius || 0}km` :
+    'Sem localização';
 
   item.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/120'}" alt="${deal.title}">
@@ -85,8 +143,7 @@ function createDealItem(deal) {
       <h3>${deal.title}</h3>
       <p style="color: #64748b; margin-bottom: 8px;">${deal.description}</p>
       <div style="color: #64748b; font-size: 13px; margin-bottom: 8px;">
-        📍 ${deal.merchantLocation?.neighborhood || 'Sem localização'} 
-        • Raio: ${deal.deliveryRadius || 0}km
+        📍 ${locationInfo}
       </div>
       <div class="deal-item-meta">
         <span>💰 R$ ${deal.dealPrice.toFixed(2)} (${deal.discount}% OFF)</span>
@@ -99,11 +156,9 @@ function createDealItem(deal) {
       </div>
     </div>
     <div class="deal-item-actions">
-      <button class="btn-icon" onclick="editDeal('${deal.id}')" title="Editar">
-        ✏️ Editar
-      </button>
-      <button class="btn-icon" onclick="toggleDealStatus('${deal.id}', ${deal.stockAvailable})" title="Pausar/Ativar">
-        ${deal.stockAvailable > 0 ? '⏸️ Pausar' : '▶️ Ativar'}
+      <button class="btn-icon" onclick="toggleDealStatus('${deal.id}', ${deal.stockAvailable})" 
+              title="${isPaused ? 'Ativar' : 'Pausar'}">
+        ${isPaused ? '▶️ Ativar' : '⏸️ Pausar'}
       </button>
       <button class="btn-icon" onclick="deleteDeal('${deal.id}', '${deal.title.replace(/'/g, "\\'")}')" 
               style="color: #ef4444;" title="Deletar">
@@ -115,15 +170,38 @@ function createDealItem(deal) {
   return item;
 }
 
+window.reactivateExpiredDeal = async function (dealId) {
+  try {
+    if (!confirm('Deseja reativar esta oferta expirada?\n\nSerá necessário definir uma nova data de validade.')) {
+      return;
+    }
+
+    const newExpiryDate = prompt('Digite a nova data de validade (YYYY-MM-DD):');
+    if (!newExpiryDate) return;
+
+    const newExpiresAt = validateExpiryDate(newExpiryDate);
+
+    const dealRef = doc(db, 'deals', dealId);
+    await updateDoc(dealRef, {
+      status: 'active',
+      expiresAt: Timestamp.fromDate(newExpiresAt),
+      stockAvailable: dealData.stockTotal,
+      updatedAt: Timestamp.now()
+    });
+
+    showNotification('success', '✅ Oferta reativada com sucesso!');
+
+    const merchantId = auth.currentUser?.uid;
+    await loadMerchantDeals(merchantId);
+
+  } catch (error) {
+    console.error('❌ Erro ao reativar oferta:', error);
+    showNotification('error', '❌ Erro ao reativar oferta');
+  }
+};
+
 // ========== FUNÇÕES AUXILIARES ==========
 
-/**
- * Obtém elemento do DOM com validação
- * @param {string} id - ID do elemento
- * @param {string} fieldName - Nome amigável do campo (para mensagens de erro)
- * @returns {HTMLElement}
- * @throws {Error} Se elemento não for encontrado
- */
 function getElement(id, fieldName) {
   const element = document.getElementById(id);
   if (!element) {
@@ -132,14 +210,6 @@ function getElement(id, fieldName) {
   return element;
 }
 
-/**
- * Obtém valor de input com validação
- * @param {string} id - ID do elemento
- * @param {string} fieldName - Nome amigável do campo
- * @param {boolean} required - Se é obrigatório
- * @returns {string}
- * @throws {Error} Se campo obrigatório estiver vazio
- */
 function getInputValue(id, fieldName, required = true) {
   const element = getElement(id, fieldName);
   const value = element.value.trim();
@@ -151,15 +221,6 @@ function getInputValue(id, fieldName, required = true) {
   return value;
 }
 
-/**
- * Obtém valor numérico com validação
- * @param {string} id - ID do elemento
- * @param {string} fieldName - Nome amigável
- * @param {boolean} required - Se é obrigatório
- * @param {number} min - Valor mínimo (opcional)
- * @returns {number}
- * @throws {Error} Se valor for inválido
- */
 function getNumberValue(id, fieldName, required = true, min = 0) {
   const value = getInputValue(id, fieldName, required);
 
@@ -180,30 +241,6 @@ function getNumberValue(id, fieldName, required = true, min = 0) {
   return number;
 }
 
-/**
- * Obtém valor de checkbox
- * @param {string} id - ID do elemento
- * @param {string} fieldName - Nome amigável
- * @returns {boolean}
- */
-function getCheckboxValue(id, fieldName) {
-  try {
-    const element = getElement(id, fieldName);
-    return element.checked;
-  } catch (error) {
-    // Se checkbox não existe, assume false
-    console.warn(`⚠️ Checkbox "${fieldName}" não encontrado, assumindo false.`);
-    return false;
-  }
-}
-
-/**
- * Obtém valor de select
- * @param {string} id - ID do elemento
- * @param {string} fieldName - Nome amigável
- * @param {boolean} required - Se é obrigatório
- * @returns {string}
- */
 function getSelectValue(id, fieldName, required = true) {
   const element = getElement(id, fieldName);
   const value = element.value;
@@ -215,12 +252,6 @@ function getSelectValue(id, fieldName, required = true) {
   return value;
 }
 
-/**
- * Valida data de expiração
- * @param {string} dateString - Data no formato YYYY-MM-DD
- * @returns {Date}
- * @throws {Error} Se data for inválida
- */
 function validateExpiryDate(dateString) {
   if (!dateString) {
     throw new Error('❌ Data de validade é obrigatória.');
@@ -234,7 +265,6 @@ function validateExpiryDate(dateString) {
     throw new Error('❌ Data de validade inválida.');
   }
 
-  // Define hora para fim do dia
   expiresAt.setHours(23, 59, 59, 999);
 
   const today = new Date();
@@ -247,7 +277,6 @@ function validateExpiryDate(dateString) {
   console.log('expiresDateOnly timestamp:', expiresDateOnly.getTime());
   console.log('today timestamp:', today.getTime());
 
-  // Permite data atual ou futura
   if (expiresDateOnly.getTime() < today.getTime()) {
     console.log(`expiresDateOnly: ${expiresDateOnly}, today: ${today}`);
     const diffDays = (today.getTime() - expiresDateOnly.getTime()) / (1000 * 60 * 60 * 24);
@@ -258,12 +287,6 @@ function validateExpiryDate(dateString) {
   return expiresAt;
 }
 
-/**
- * Valida preços
- * @param {number} originalPrice - Preço original
- * @param {number} dealPrice - Preço com desconto
- * @throws {Error} Se preços forem inválidos
- */
 function validatePrices(originalPrice, dealPrice) {
   if (originalPrice <= 0) {
     throw new Error('❌ Preço original deve ser maior que zero.');
@@ -278,197 +301,192 @@ function validatePrices(originalPrice, dealPrice) {
   }
 }
 
-// ========== FUNÇÃO PRINCIPAL REFATORADA ==========
+// ========== CRIAÇÃO DE OFERTA ==========
 
 let isCreatingDeal = false;
 
 // Criar nova oferta
 async function createDeal() {
   try {
+    if (isCreatingDeal) return;
+    isCreatingDeal = true;
 
-    if (isCreatingDeal) {
-      console.log('⚠️ Criação de oferta já em andamento, ignorando...');
-      return;
+    console.log('🔄 Iniciando criação de oferta...');
+
+    // 1. Verificar autenticação
+    const merchantId = auth.currentUser?.uid;
+    if (!merchantId) {
+      throw new Error('Você precisa estar logado para criar ofertas.');
     }
 
-    try {
-      isCreatingDeal = true;
+    // 2. Buscar dados do merchant (com localização)
+    console.log('🔍 Buscando dados do lojista...');
+    const merchantData = await getMerchantData(merchantId);
 
-      console.log('🔄 Iniciando criação de oferta...');
-
-      // 1. Verificar autenticação
-      const merchantId = auth.currentUser?.uid;
-      if (!merchantId) {
-        throw new Error('Você precisa estar logado para criar ofertas.');
-      }
-
-      // 2. Coletar dados básicos com validação
-      const title = getInputValue('deal-title', 'Título da oferta');
-      const description = getInputValue('deal-description', 'Descrição');
-      const originalPrice = getNumberValue('deal-original-price', 'Preço original', true, 0.01);
-      const dealPrice = getNumberValue('deal-price', 'Preço com desconto', true, 0.01);
-      const stock = getNumberValue('deal-stock', 'Estoque', true, 1);
-      const category = getSelectValue('deal-category', 'Categoria');
-
-      // 3. Validações de preço
-      validatePrices(originalPrice, dealPrice);
-
-      // 4. Coletar data com validação
-      const expiresDate = getInputValue('deal-expires', 'Data de validade');
-      const expiresAt = validateExpiryDate(expiresDate);
-
-      // 5. Coletar imagem (opcional)
-      let imageUrl = '';
-      try {
-        // Tenta pegar da URL primeiro
-        imageUrl = getInputValue('deal-image-url', 'URL da imagem', false);
-      } catch (error) {
-        // Se não tem campo de URL, verifica se tem upload
-        try {
-          const imageFile = getElement('deal-image-file', 'Arquivo de imagem');
-          if (imageFile.files && imageFile.files[0]) {
-            // Em produção, aqui você faria upload para Firebase Storage
-            imageUrl = await uploadImageToStorage(imageFile.files[0], merchantId);
-          }
-        } catch (uploadError) {
-          console.log('📷 Nenhuma imagem fornecida, usando placeholder.');
-        }
-      }
-
-      // Imagem padrão se não houver
-      if (!imageUrl) {
-        imageUrl = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&h=300&fit=crop';
-      }
-
-      // 6. Coletar localização (conforme novo HTML)
-      const address = getInputValue('deal-address', 'Endereço');
-      const neighborhood = getInputValue('deal-neighborhood', 'Bairro');
-      const deliveryRadius = getNumberValue('deal-radius', 'Raio de atendimento', true, 1);
-
-      // 7. Obter coordenadas automaticamente (usando função de geocodificação)
-      let latitude, longitude;
-      try {
-        // Tenta usar coordenadas já calculadas (se sua função de geocodificação as armazenou)
-        if (window.dealLatitude && window.dealLongitude) {
-          latitude = window.dealLatitude;
-          longitude = window.dealLongitude;
-          console.log('📍 Usando coordenadas da geocodificação:', latitude, longitude);
-        } else {
-          // Fallback: gera coordenadas aproximadas
-          console.warn('⚠️ Usando coordenadas aproximadas para endereço.');
-          // Em produção, você deve garantir que a geocodificação foi feita
-          throw new Error('Endereço não foi geocodificado. Digite o endereço completo e aguarde.');
-        }
-      } catch (geoError) {
-        throw new Error(`❌ ${geoError.message} Clique fora do campo de endereço para gerar coordenadas automaticamente.`);
-      }
-
-      // 8. Opções de entrega (fixo como retirada)
-      const deliveryOptions = ['pickup']; // Conforme solicitado
-
-      // 9. Calcular desconto
-      const discount = Math.round(((originalPrice - dealPrice) / originalPrice) * 100);
-
-      // 10. Montar dados da oferta
-      const dealData = {
-        title,
-        description,
-        originalPrice,
-        dealPrice,
-        discount,
-        stockTotal: stock,
-        stockAvailable: stock,
-        category,
-        merchantId,
-        merchantLocation: {
-          latitude,
-          longitude,
-          address,
-          neighborhood
-        },
-        deliveryRadius,
-        deliveryOptions,
-        imageUrl,
-        expiresAt: Timestamp.fromDate(expiresAt),
-        createdAt: Timestamp.now(),
-        status: 'active',
-        views: 0,
-        couponsGenerated: 0,
-        couponsRedeemed: 0
-      };
-
-      console.log('📝 Dados da oferta:', dealData);
-
-      // 11. Salvar no Firebase
-      console.log('💾 Salvando no Firebase...');
-      const docRef = await addDoc(collection(db, 'deals'), dealData);
-
-      console.log('✅ Oferta criada com ID:', docRef.id);
-
-      // 12. Feedback visual
-      showNotification('success', '🎉 Oferta criada com sucesso!');
-
-      // 13. Limpar formulário (opcional)
-      try {
-        const form = getElement('deal-form', 'Formulário');
-        form.reset();
-
-        // Limpa preview de imagem se existir
-        const imagePreview = document.getElementById('image-preview');
-        if (imagePreview) imagePreview.style.display = 'none';
-
-        const uploadContainer = document.getElementById('upload-container');
-        if (uploadContainer) uploadContainer.style.display = 'block';
-      } catch (formError) {
-        console.warn('⚠️ Não foi possível limpar o formulário:', formError.message);
-      }
-
-      // 14. Voltar para lista e recarregar
-      showView('deals');
-      await loadMerchantDeals(merchantId);
-
-    } catch (error) {
-      console.error('❌ Erro detalhado:', error);
-
-      // Mensagem amigável para o usuário
-      let userMessage = error.message;
-
-      // Melhora mensagens de erro específicas
-      if (error.message.includes('permission-denied')) {
-        userMessage = '❌ Permissão negada. Verifique suas credenciais.';
-      } else if (error.message.includes('network-error')) {
-        userMessage = '❌ Erro de conexão. Verifique sua internet.';
-      } else if (error.message.includes('not-found')) {
-        userMessage = '❌ Elemento não encontrado no HTML. Atualize a página.';
-      }
-
-      showNotification('error', userMessage);
+    if (!merchantData.location || !merchantData.location.latitude) {
+      throw new Error('❌ Localização do estabelecimento não configurada. Atualize seu cadastro primeiro.');
     }
+
+    // 3. Coletar dados da oferta
+    const title = getInputValue('deal-title', 'Título da oferta');
+    const description = getInputValue('deal-description', 'Descrição');
+    const originalPrice = getNumberValue('deal-original-price', 'Preço original', true, 0.01);
+    const dealPrice = getNumberValue('deal-price', 'Preço com desconto', true, 0.01);
+    const stock = getNumberValue('deal-stock', 'Estoque', true, 1);
+    const category = getSelectValue('deal-category', 'Categoria');
+
+    // 4. Validações de preço
+    validatePrices(originalPrice, dealPrice);
+
+    // 5. Data de expiração
+    const expiresDate = getInputValue('deal-expires', 'Data de validade');
+    const expiresAt = validateExpiryDate(expiresDate);
+
+    // 6. Imagem (opcional)
+    let imageUrl = await getDealImage();
+
+    if (!imageUrl) {
+      imageUrl = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&h=300&fit=crop';
+    }
+
+    // 7. Usar localização do merchant
+    const merchantLocation = merchantData.location;
+
+    // 8. Calcular desconto
+    const discount = Math.round(((originalPrice - dealPrice) / originalPrice) * 100);
+
+    // 9. Montar dados da oferta (SIMPLIFICADO - sem campos de localização no form)
+    const dealData = {
+      // Dados básicos
+      title,
+      description,
+      originalPrice,
+      dealPrice,
+      discount,
+      stockTotal: stock,
+      stockAvailable: stock,
+      category,
+
+      // Referência ao merchant
+      merchantId,
+      merchantName: merchantData.tradingName || merchantData.businessName,
+      merchantCategory: merchantData.category,
+      merchantPhone: merchantData.phone,
+
+      // Localização REUTILIZADA do merchant (SEMPRE a mesma)
+      merchantLocation: {
+        // Dados completos do endereço
+        address: merchantLocation.address,
+        number: merchantLocation.number,
+        complement: merchantLocation.complement || '',
+        neighborhood: merchantLocation.neighborhood,
+        city: merchantLocation.city,
+        state: merchantLocation.state,
+        cep: merchantLocation.cep,
+        fullAddress: merchantLocation.fullAddress || `${merchantLocation.address}, ${merchantLocation.number} - ${merchantLocation.neighborhood}, ${merchantLocation.city} - ${merchantLocation.state}`,
+
+        // Coordenadas (já calculadas no cadastro)
+        latitude: merchantLocation.latitude,
+        longitude: merchantLocation.longitude,
+        geohash: merchantLocation.geohash,
+
+        // Configurações de entrega
+        deliveryRadius: merchantLocation.deliveryRadius || 5,
+        deliveryOptions: merchantLocation.deliveryOptions || ['pickup']
+      },
+
+      // Dados da oferta
+      imageUrl,
+      expiresAt: Timestamp.fromDate(expiresAt),
+      createdAt: Timestamp.now(),
+      status: 'active',
+      views: 0,
+      couponsGenerated: 0,
+      couponsRedeemed: 0,
+      revenueGenerated: 0
+    };
+
+    console.log('📝 Dados da oferta:', dealData);
+
+    // 10. Salvar no Firebase
+    console.log('💾 Salvando oferta...');
+    const docRef = await addDoc(collection(db, 'deals'), dealData);
+
+    console.log('✅ Oferta criada com ID:', docRef.id);
+    showNotification('success', '🎉 Oferta criada com sucesso!');
+
+    // 11. Limpar formulário
+    resetDealForm();
+
+    // 12. Voltar para lista e recarregar
+    showView('deals');
+    await loadMerchantDeals(merchantId);
+
   } catch (error) {
-    throw new Error(`❌ ${error.message}`);
+    console.error('❌ Erro ao criar oferta:', error);
+    showNotification('error', error.message);
   } finally {
     isCreatingDeal = false;
   }
 }
 
+// Obter imagem da oferta
+async function getDealImage() {
+  try {
+    // Tenta pegar da URL primeiro
+    const urlValue = getInputValue('deal-image-url', 'URL da imagem', false);
+    if (urlValue && isValidUrl(urlValue)) {
+      return urlValue;
+    }
+  } catch (error) {
+    // Se não tem URL, verifica arquivo
+    try {
+      const imageFile = getElement('deal-image-file', 'Arquivo de imagem');
+      if (imageFile.files && imageFile.files[0]) {
+        return await uploadImageToStorage(imageFile.files[0], auth.currentUser?.uid);
+      }
+    } catch (uploadError) {
+      console.log('📷 Nenhuma imagem fornecida');
+    }
+  }
+  return '';
+}
+
+// Resetar formulário
+function resetDealForm() {
+  try {
+    const form = getElement('deal-form', 'Formulário');
+    form.reset();
+
+    // Limpar preview de imagem
+    const imagePreview = document.getElementById('image-preview');
+    if (imagePreview) imagePreview.style.display = 'none';
+
+    const uploadContainer = document.getElementById('upload-container');
+    if (uploadContainer) uploadContainer.style.display = 'block';
+
+    // Limpar URL da imagem
+    const imageUrlInput = document.getElementById('deal-image-url');
+    if (imageUrlInput) imageUrlInput.value = '';
+
+  } catch (error) {
+    console.warn('⚠️ Não foi possível limpar o formulário:', error.message);
+  }
+}
+
+function isValidUrl(string) {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 // ========== FUNÇÕES DE SUPORTE ==========
 
-/**
- * Simula upload de imagem para Firebase Storage
- * @param {File} file - Arquivo de imagem
- * @param {string} merchantId - ID do lojista
- * @returns {Promise<string>} URL da imagem
- */
 async function uploadImageToStorage(file, merchantId) {
-  // Em produção, implemente com Firebase Storage:
-  /*
-  const storage = getStorage();
-  const storageRef = ref(storage, `deals / ${ merchantId }/${Date.now()}_${file.name}`);
-    await uploadBytes(storageRef, file);
-    return await getDownloadURL(storageRef);
-  */
-
-  // Para desenvolvimento, retorna URL de placeholder
+  // Em produção, implemente com Firebase Storage
   return new Promise((resolve) => {
     setTimeout(() => {
       const reader = new FileReader();
@@ -478,22 +496,14 @@ async function uploadImageToStorage(file, merchantId) {
   });
 }
 
-/**
- * Mostra notificação
- * @param {string} type - 'success', 'error', 'warning'
- * @param {string} message - Mensagem a ser exibida
- */
 function showNotification(type, message) {
-  // Remove notificações anteriores
   const existing = document.querySelector('.deal-notification');
   if (existing) existing.remove();
 
-  // Cria nova notificação
   const notification = document.createElement('div');
   notification.className = `deal-notification deal-notification-${type}`;
   notification.textContent = message;
 
-  // Estilos
   notification.style.cssText = `
     position: fixed;
     top: 20px;
@@ -511,36 +521,14 @@ function showNotification(type, message) {
 
   document.body.appendChild(notification);
 
-  // Remove após 5 segundos
   setTimeout(() => {
     notification.style.animation = 'slideOutRight 0.3s ease';
     setTimeout(() => notification.remove(), 300);
   }, 5000);
 }
 
-// Adiciona estilos de animação
-if (!document.querySelector('#notification-styles')) {
-  const style = document.createElement('style');
-  style.id = 'notification-styles';
-  style.textContent = `
-    @keyframes slideInRight {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-      from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(100%); opacity: 0; }
-    }
-    .deal-notification-success { background: #10b981 !important; }
-    .deal-notification-error { background: #ef4444 !important; }
-    .deal-notification-warning { background: #f59e0b !important; }
-  `;
-  document.head.appendChild(style);
-}
-
 // ========== CONECTA EVENTO DE SUBMIT ==========
 
-// Adicione esta função para conectar o formulário
 export function setupDealForm() {
   try {
     const form = getElement('deal-form', 'Formulário de oferta');
@@ -554,98 +542,91 @@ export function setupDealForm() {
   }
 }
 
-// Chame esta função quando a view for carregada
-document.addEventListener('DOMContentLoaded', setupDealForm);
-
-// Geocoding - Buscar coordenadas do endereço
-window.getLocationFromAddress = async function () {
-  const address = document.getElementById('deal-address').value;
-
-  if (!address) {
-    alert('❌ Digite um endereço primeiro');
-    return;
-  }
-
-  try {
-    console.log('📍 Buscando coordenadas para:', address);
-
-    // Usar Nominatim (OpenStreetMap) - GRÁTIS
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=br&limit=1`;
-
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'DealApp/1.0'
+// Quando a view de criar oferta for carregada, atualize as informações do merchant
+document.addEventListener('DOMContentLoaded', function () {
+  // Observar quando a view de criar oferta for mostrada
+  const observer = new MutationObserver(() => {
+    const createDealView = document.getElementById('view-create-deal');
+    if (createDealView && createDealView.classList.contains('active')) {
+      // Atualizar informações do merchant se disponíveis
+      if (window.currentMerchant) {
+        updateMerchantUI(window.currentMerchant);
       }
-    });
-
-    const data = await response.json();
-
-    if (data.length > 0) {
-      const location = data[0];
-
-      console.log('✅ Localização encontrada:', location);
-
-      // Preencher coordenadas
-      document.getElementById('deal-latitude').value = location.lat;
-      document.getElementById('deal-longitude').value = location.lon;
-
-      // Tentar extrair bairro se ainda não preenchido
-      const currentNeighborhood = document.getElementById('deal-neighborhood').value;
-      if (!currentNeighborhood && location.address) {
-        const neighborhood = location.address.suburb ||
-          location.address.neighbourhood ||
-          location.address.quarter ||
-          location.address.district || '';
-
-        if (neighborhood) {
-          document.getElementById('deal-neighborhood').value = neighborhood;
-        }
-      }
-
-      alert('✅ Coordenadas encontradas!\n\nLatitude: ' + location.lat + '\nLongitude: ' + location.lon);
-    } else {
-      alert('❌ Endereço não encontrado.\n\nVerifique se digitou corretamente:\n- Rua, número\n- Bairro\n- Cidade - Estado');
     }
+  });
 
-  } catch (error) {
-    console.error('❌ Erro ao buscar coordenadas:', error);
-    alert('❌ Erro ao buscar coordenadas. Tente novamente.');
-  }
-};
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+});
 
-// Editar oferta
+// ========== FUNÇÕES GLOBAIS ==========
+
 window.editDeal = async function (dealId) {
   alert('Função de edição em desenvolvimento. Deal ID: ' + dealId);
 };
 
-// Pausar/Ativar oferta
 window.toggleDealStatus = async function (dealId, currentStock) {
   try {
-    const newStock = currentStock > 0 ? 0 : 1;
-    const action = newStock > 0 ? 'ativar' : 'pausar';
+    // Buscar a oferta atual para saber o estoque total
+    const dealRef = doc(db, 'deals', dealId);
+    const dealSnap = await getDoc(dealRef);
 
-    if (!confirm(`Tem certeza que deseja ${action} esta oferta?`)) {
+    if (!dealSnap.exists()) {
+      throw new Error('Oferta não encontrada');
+    }
+
+    const dealData = dealSnap.data();
+    const isActive = dealData.status === 'active';
+    const actionVerb = isActive ? 'pausar' : 'ativar';
+    const actionPast = isActive ? 'pausada' : 'ativada';
+    const confirmationMsg = isActive
+      ? 'Ao pausar, a oferta não será mais visível para os clientes.\nTem certeza que deseja pausar esta oferta?'
+      : 'Ao ativar, a oferta ficará visível para os clientes.\nTem certeza que deseja ativar esta oferta?';
+
+    if (!confirm(confirmationMsg)) {
       return;
     }
 
-    const dealRef = doc(db, 'deals', dealId);
+    // Determinar novo status e estoque
+    const newStatus = isActive ? 'paused' : 'active';
+    const newStock = isActive ? 0 : dealData.stockTotal;
+
     await updateDoc(dealRef, {
-      stockAvailable: newStock
+      status: newStatus,
+      stockAvailable: newStock,
+      updatedAt: Timestamp.now()
     });
 
-    console.log(`✅ Oferta ${action}da`);
-    alert(`✅ Oferta ${action}da com sucesso!`);
+    console.log(`✅ Oferta ${actionPast} com sucesso!`);
 
+    // Mensagem mais amigável
+    const successMsg = isActive
+      ? '⏸️ Oferta pausada com sucesso!\n\nEla não será mais visível para os clientes até ser ativada novamente.'
+      : '▶️ Oferta ativada com sucesso!\n\nEla está agora visível para os clientes dentro do raio de atendimento.';
+
+    showNotification('success', successMsg);
+
+    // Recarregar ofertas
     const merchantId = auth.currentUser?.uid;
     await loadMerchantDeals(merchantId);
 
   } catch (error) {
     console.error('❌ Erro:', error);
-    alert('❌ Erro ao alterar status');
+
+    // Mensagem de erro mais específica
+    let errorMsg = '❌ Erro ao alterar status da oferta';
+    if (error.message.includes('permission')) {
+      errorMsg = '❌ Permissão negada. Você não tem permissão para modificar esta oferta.';
+    } else if (error.message.includes('network')) {
+      errorMsg = '❌ Erro de conexão. Verifique sua internet e tente novamente.';
+    }
+
+    showNotification('error', errorMsg);
   }
 };
 
-// Deletar oferta
 window.deleteDeal = async function (dealId, dealTitle) {
   try {
     if (!confirm(`Tem certeza que deseja DELETAR "${dealTitle}"?\n\nEsta ação não pode ser desfeita.`)) {
@@ -665,253 +646,3 @@ window.deleteDeal = async function (dealId, dealTitle) {
     alert('❌ Erro ao deletar');
   }
 };
-
-
-// Upload de Imagem
-document.addEventListener('DOMContentLoaded', function () {
-  const imageFileInput = document.getElementById('deal-image-file');
-  const imageUrlInput = document.getElementById('deal-image-url');
-  const imagePreview = document.getElementById('image-preview');
-  const previewImage = document.getElementById('preview-image');
-  const uploadContainer = document.getElementById('upload-container');
-  const removeImageBtn = document.getElementById('remove-image-btn');
-  const uploadStatus = document.getElementById('upload-status');
-
-  let currentImageUrl = '';
-
-  // Preview da imagem do arquivo
-  if (imageFileInput) {
-    imageFileInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file) {
-        // Verifica tamanho (máx 2MB)
-        if (file.size > 2 * 1024 * 1024) {
-          alert('A imagem deve ter no máximo 2MB');
-          this.value = '';
-          return;
-        }
-
-        // Verifica tipo
-        if (!file.type.match('image.*')) {
-          alert('Por favor, selecione apenas imagens');
-          this.value = '';
-          return;
-        }
-
-        // Mostra status de processamento
-        uploadStatus.style.display = 'block';
-
-        // Cria preview
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          // Simula upload (em produção, você enviaria para Firebase Storage)
-          setTimeout(() => {
-            currentImageUrl = e.target.result;
-            previewImage.src = currentImageUrl;
-            imagePreview.style.display = 'block';
-            uploadContainer.style.display = 'none';
-            uploadStatus.style.display = 'none';
-
-            // Limpa campo URL
-            if (imageUrlInput) imageUrlInput.value = '';
-          }, 1000);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-  // Preview da imagem via URL
-  if (imageUrlInput) {
-    imageUrlInput.addEventListener('blur', function () {
-      const url = this.value.trim();
-      if (url && isValidUrl(url)) {
-        uploadStatus.style.display = 'block';
-
-        // Testa se a URL é uma imagem válida
-        const testImage = new Image();
-        testImage.onload = function () {
-          setTimeout(() => {
-            currentImageUrl = url;
-            previewImage.src = url;
-            imagePreview.style.display = 'block';
-            uploadContainer.style.display = 'none';
-            uploadStatus.style.display = 'none';
-
-            // Limpa campo arquivo
-            if (imageFileInput) imageFileInput.value = '';
-          }, 500);
-        };
-        testImage.onerror = function () {
-          alert('URL da imagem inválida. Verifique o link.');
-          uploadStatus.style.display = 'none';
-        };
-        testImage.src = url;
-      }
-    });
-  }
-
-  // Remove imagem
-  if (removeImageBtn) {
-    removeImageBtn.addEventListener('click', function () {
-      currentImageUrl = '';
-      imagePreview.src = '';
-      imagePreview.style.display = 'none';
-      uploadContainer.style.display = 'block';
-
-      // Limpa campos
-      if (imageFileInput) imageFileInput.value = '';
-      if (imageUrlInput) imageUrlInput.value = '';
-    });
-  }
-
-  // Valida URL
-  function isValidUrl(string) {
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // Atualiza cálculo de desconto
-  const originalPriceInput = document.getElementById('deal-original-price');
-  const priceInput = document.getElementById('deal-price');
-  const discountInput = document.getElementById('deal-discount');
-
-  function calculateDiscount() {
-    if (originalPriceInput && priceInput && discountInput) {
-      const original = parseFloat(originalPriceInput.value) || 0;
-      const discounted = parseFloat(priceInput.value) || 0;
-
-      if (original > 0 && discounted > 0) {
-        const discount = ((original - discounted) / original) * 100;
-        discountInput.value = discount.toFixed(0);
-      } else {
-        discountInput.value = '';
-      }
-    }
-  }
-
-  if (originalPriceInput && priceInput) {
-    originalPriceInput.addEventListener('input', calculateDiscount);
-    priceInput.addEventListener('input', calculateDiscount);
-  }
-
-  // Geocodificação automática do endereço
-  const addressInput = document.getElementById('deal-address');
-  const neighborhoodInput = document.getElementById('deal-neighborhood');
-
-  if (addressInput) {
-    let geocodeTimeout;
-
-    addressInput.addEventListener('input', function () {
-      clearTimeout(geocodeTimeout);
-
-      // Espera o usuário parar de digitar (500ms)
-      geocodeTimeout = setTimeout(async () => {
-        const address = this.value.trim();
-        if (address.length > 10) { // Mínimo de caracteres
-          await geocodeAddress(address);
-        }
-      }, 500);
-    });
-  }
-
-  // Função de geocodificação (usando Nominatim - OpenStreetMap)
-  async function geocodeAddress(address) {
-    try {
-      console.log('Geocodificando endereço:', address);
-
-      // Em produção, use Firebase Functions ou outro serviço
-      // Esta é uma implementação básica com Nominatim
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=br`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        if (data && data.length > 0) {
-          const result = data[0];
-
-          // Preenche bairro se disponível
-          if (neighborhoodInput && !neighborhoodInput.value) {
-            // Tenta extrair bairro do resultado
-            const neighborhood = result.address.suburb ||
-              result.address.neighbourhood ||
-              result.address.city_district;
-
-            if (neighborhood) {
-              neighborhoodInput.value = neighborhood;
-            }
-          }
-
-          // Aqui você poderia preencher campos ocultos com lat/long
-          console.log('Coordenadas encontradas:', result.lat, result.lon);
-
-          // Exemplo: Armazena em variáveis globais ou campos ocultos
-          window.dealLatitude = parseFloat(result.lat);
-          window.dealLongitude = parseFloat(result.lon);
-
-          // Feedback visual
-          showToast('📍 Endereço reconhecido com sucesso!', 'success');
-        } else {
-          showToast('⚠️ Endereço não encontrado. Verifique o formato.', 'warning');
-        }
-      }
-    } catch (error) {
-      console.error('Erro na geocodificação:', error);
-      showToast('❌ Erro ao processar endereço. Tente novamente.', 'error');
-    }
-  }
-
-  // Função auxiliar para mostrar toast
-  function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#f59e0b'};
-            color: white;
-            border-radius: 8px;
-            z-index: 1000;
-            animation: slideIn 0.3s ease;
-        `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.style.animation = 'slideOut 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
-  }
-
-  // Adiciona estilos CSS para animações
-  const style = document.createElement('style');
-  style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-        .spinner-small {
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    `;
-  document.head.appendChild(style);
-});

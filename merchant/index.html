@@ -78,13 +78,232 @@
       </div>
     </div>
 
+    <!-- Cadastro do Lojista -->
+    <div
+      id="register-screen"
+      class="screen hidden"
+      role="dialog"
+      aria-labelledby="register-title"
+    >
+      <div class="register-container">
+        <div class="register-header">
+          <img
+            src="/public/assets/icons/icon-192.png"
+            alt="Radar de Ofertas"
+            class="logo"
+          />
+          <h1 id="register-title">Complete seu cadastro</h1>
+          <p class="brand-subtitle">Preencha os dados do seu estabelecimento</p>
+        </div>
+
+        <form id="register-form" class="form-container">
+          <!-- Dados da Empresa -->
+          <h3>📋 Dados da Empresa</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>CNPJ *</label>
+              <input
+                type="text"
+                id="merchant-cnpj"
+                required
+                placeholder="00.000.000/0000-00"
+                maxlength="18"
+              />
+            </div>
+            <div class="form-group">
+              <label>Razão Social *</label>
+              <input
+                type="text"
+                id="merchant-business-name"
+                required
+                placeholder="Empresa LTDA"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nome Fantasia *</label>
+              <input
+                type="text"
+                id="merchant-trading-name"
+                required
+                placeholder="Nome do Estabelecimento"
+              />
+            </div>
+            <div class="form-group">
+              <label>Categoria do Negócio *</label>
+              <select id="merchant-category" required>
+                <option value="">Selecione...</option>
+                <option value="supermarket">Supermercado</option>
+                <option value="pharmacy">Farmácia</option>
+                <option value="bakery">Padaria</option>
+                <option value="restaurant">Restaurante</option>
+                <option value="petshop">Pet Shop</option>
+                <option value="utilities">Utilidades</option>
+                <option value="clothing">Vestuário</option>
+                <option value="electronics">Eletrônicos</option>
+                <option value="services">Serviços</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Localização -->
+          <h3>📍 Localização do Estabelecimento</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>CEP *</label>
+              <input
+                type="text"
+                id="merchant-cep"
+                required
+                placeholder="00000-000"
+                maxlength="9"
+              />
+            </div>
+            <div class="form-group">
+              <label>Estado *</label>
+              <select id="merchant-state" required>
+                <option value="">Selecione...</option>
+                <option value="SP">São Paulo</option>
+                <option value="RJ">Rio de Janeiro</option>
+                <option value="MG">Minas Gerais</option>
+                <!-- outros estados -->
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cidade *</label>
+              <input
+                type="text"
+                id="merchant-city"
+                required
+                placeholder="São Paulo"
+              />
+            </div>
+            <div class="form-group">
+              <label>Bairro *</label>
+              <input
+                type="text"
+                id="merchant-neighborhood"
+                required
+                placeholder="Bela Vista"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Endereço *</label>
+              <input
+                type="text"
+                id="merchant-address"
+                required
+                placeholder="Av. Paulista"
+              />
+            </div>
+            <div class="form-group">
+              <label>Número *</label>
+              <input
+                type="text"
+                id="merchant-number"
+                required
+                placeholder="1000"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Complemento</label>
+            <input
+              type="text"
+              id="merchant-complement"
+              placeholder="Sala 101, Bloco A"
+            />
+          </div>
+
+          <!-- Raio de Atendimento (fixo para todas as ofertas) -->
+          <div class="form-group">
+            <label>Raio de Atendimento Padrão (km) *</label>
+            <select id="merchant-radius" required>
+              <option value="1">1 km</option>
+              <option value="2">2 km</option>
+              <option value="3">3 km</option>
+              <option value="5" selected>5 km (recomendado)</option>
+              <option value="10">10 km</option>
+              <option value="15">15 km</option>
+              <option value="20">20 km (máximo)</option>
+            </select>
+            <small
+              >Distância máxima que os clientes podem estar para ver suas
+              ofertas</small
+            >
+          </div>
+
+          <!-- Contato -->
+          <h3>📞 Dados de Contato</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Telefone do Estabelecimento *</label>
+              <input
+                type="tel"
+                id="merchant-phone"
+                required
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div class="form-group">
+              <label>Nome do Responsável *</label>
+              <input
+                type="text"
+                id="merchant-responsible-name"
+                required
+                placeholder="João da Silva"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>E-mail do Responsável *</label>
+              <input
+                type="email"
+                id="merchant-responsible-email"
+                required
+                placeholder="joao@empresa.com"
+              />
+            </div>
+            <div class="form-group">
+              <label>Celular do Responsável *</label>
+              <input
+                type="tel"
+                id="merchant-responsible-phone"
+                required
+                placeholder="(11) 98888-8888"
+              />
+            </div>
+          </div>
+
+          <!-- Botões -->
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Salvar Cadastro</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Main Panel -->
     <div id="panel" class="hidden">
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
           <h2>🏪 Radar de Ofertas</h2>
-          <p class="role-badge">Lojista</p>
+          <p id="merchant-name-badge" class="role-badge">Lojista</p>
         </div>
 
         <nav class="sidebar-nav">
@@ -142,6 +361,32 @@
           </div>
 
           <form id="deal-form" class="form-container">
+            <!-- Informações do Estabelecimento -->
+            <div
+              class="merchant-info-card"
+              style="
+                background: #f0f9ff;
+                border: 1px solid #bae6fd;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 24px;
+              "
+            >
+              <h4 style="margin: 0 0 8px 0; color: #0369a1">
+                🏪 Sua Localização
+              </h4>
+              <p
+                style="margin: 0; color: #64748b; font-size: 0.95rem"
+                id="merchant-location-info"
+              >
+                Carregando informações do estabelecimento...
+              </p>
+              <small style="color: #94a3b8; display: block; margin-top: 8px">
+                ℹ️ A localização é herdada do seu cadastro. Para alterar,
+                atualize seus dados.
+              </small>
+            </div>
+
             <!-- Título e Descrição -->
             <div class="form-group">
               <label>Título da Oferta *</label>
@@ -236,66 +481,7 @@
               </div>
             </div>
 
-            <!-- LOCALIZAÇÃO (Simplificada) -->
-            <h3
-              style="
-                margin: 32px 0 16px 0;
-                color: #1e293b;
-                padding-top: 16px;
-                border-top: 1px solid #e2e8f0;
-              "
-            >
-              📍 Localização do Estabelecimento
-            </h3>
-
-            <div class="form-group">
-              <label>Endereço Completo *</label>
-              <input
-                type="text"
-                id="deal-address"
-                required
-                placeholder="Av. Paulista, 1000 - Bela Vista, São Paulo - SP, 01310-100"
-              />
-              <small style="color: #64748b; font-size: 0.875rem">
-                Digite endereço completo com CEP. As coordenadas serão geradas
-                automaticamente.
-              </small>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>Bairro *</label>
-                <input
-                  type="text"
-                  id="deal-neighborhood"
-                  required
-                  placeholder="Bela Vista"
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Raio de Atendimento *</label>
-                <select id="deal-radius" required>
-                  <option value="">Selecione...</option>
-                  <option value="1">1 km (muito próximo)</option>
-                  <option value="2">2 km</option>
-                  <option value="3">3 km</option>
-                  <option value="5" selected>5 km (recomendado)</option>
-                  <option value="10">10 km</option>
-                  <option value="15">15 km</option>
-                  <option value="20">20 km (máximo)</option>
-                </select>
-                <small style="color: #64748b; font-size: 0.875rem">
-                  Distância máxima que os clientes podem estar para ver sua
-                  oferta
-                </small>
-              </div>
-
-              <!-- Campo oculto para tipo de entrega (fixo como retirada) -->
-              <input type="hidden" id="delivery-type" value="pickup" />
-            </div>
-
-            <!-- UPLOAD DE IMAGEM (Novo) -->
+            <!-- UPLOAD DE IMAGEM -->
             <h3
               style="
                 margin: 32px 0 16px 0;
@@ -531,6 +717,7 @@
     <!-- Scripts -->
     <script type="module" src="/merchant/js/firebase-config.js"></script>
     <script type="module" src="/merchant/js/auth.js"></script>
+    <script type="module" src="/merchant/js/merchant.js"></script>
     <script type="module" src="/merchant/js/deals.js"></script>
     <script type="module" src="/merchant/js/coupons.js"></script>
     <script type="module" src="/merchant/js/app.js"></script>
