@@ -1224,3 +1224,124 @@ body {
   color: white !important;
   border-color: #2196f3;
 }
+
+/* Estilos de Status */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+/* Urgente: Laranja Vibrante */
+.status-urgent {
+  border-left: 5px solid #f97316 !important;
+}
+.badge-urgent {
+  background: #f97316;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+/* Expirado: Vermelho */
+.status-expired {
+  border-left: 5px solid #ef4444 !important;
+  opacity: 0.6;
+}
+.badge-expired {
+  background: #ef4444;
+  color: white;
+}
+
+/* Utilizado: Cinza Sugestivo */
+.status-redeemed {
+  border-left: 5px solid #10b981 !important;
+}
+.badge-redeemed {
+  background: #10b981;
+  color: white;
+}
+
+.text-highlight {
+  color: #f97316;
+  font-weight: bold;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Container do código para dar foco */
+.code-container {
+  background: #0f172a; /* Fundo mais escuro que o card para contraste */
+  border: 2px dashed #2196f3; /* Borda tracejada estilo cupom */
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+  text-align: center;
+}
+
+.code-label {
+  display: block;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.code-value {
+  font-family:
+    'Courier New', Courier, monospace; /* Fonte monoespaçada facilita leitura de caracteres */
+  font-size: 2.2rem; /* Tamanho grande para leitura rápida */
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 6px; /* Espaçamento entre números evita confusão */
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(33, 150, 243, 0.3); /* Brilho sutil para destacar no Dark Mode */
+}
+
+/* Ajuste para quando o cupom estiver expirado */
+.status-expired .code-container {
+  border-color: #475569;
+  background: #1e293b;
+}
+
+.status-expired .code-value {
+  color: #64748b;
+  text-decoration: line-through;
+  text-shadow: none;
+}
+
+/* Ajuste para quando for Urgente - Borda Laranja */
+.status-urgent .code-container {
+  border-color: #f97316;
+}
+
+.product-title {
+  font-size: 1.6rem; /* Tamanho substancial */
+  font-weight: 800;
+  color: #ffffff;
+  margin: 4px 0 12px 0;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  /* Um degradê sutil ou cor sólida que combine com o seu tema dark */
+  background: linear-gradient(90deg, #ffffff, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* No estado expirado, removemos o destaque do produto */
+.status-expired .product-title {
+  background: none;
+  -webkit-text-fill-color: #64748b;
+  opacity: 0.7;
+}
