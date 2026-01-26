@@ -257,7 +257,12 @@ function showDealModal(deal) {
     </div>
     <p class="stock-info" style="color: #64748b; margin-bottom: 12px;">${stockDisplay}</p>
     ${deliveryInfo.length > 0 ? `<p style="color: #64748b; margin-bottom: 12px;">✅ ${deliveryInfo.join(' • ')}</p>` : ''}
-    <p style="color: #64748b; font-size: 14px;">📍 ${deal.merchantLocation?.address || 'Ver localização no mapa'}</p>
+    <p style="color: #64748b; font-size: 14px;">
+      📍 ${deal.merchantLocation?.address ?
+      `${deal.merchantLocation.address}${deal.merchantLocation?.number ? `, ${deal.merchantLocation.number}` : ''}${deal.merchantLocation?.complement ? ` - ${deal.merchantLocation.complement}` : ''} - ${deal.merchantLocation?.neighborhood || ''}, ${deal.merchantLocation?.city || ''} - ${deal.merchantLocation?.state || ''}` :
+      'Ver localização no mapa'}
+    </p>
+</p>
   `;
 
   modal.classList.remove('hidden');

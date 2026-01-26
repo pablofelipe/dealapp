@@ -356,7 +356,7 @@ async function createDeal() {
     let imageUrl = await getDealImage();
 
     if (!imageUrl) {
-      imageUrl = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&h=300&fit=crop';
+      imageUrl = 'https://dummyimage.com/500x300/cccccc/666666.png&text=Imagem+Indispon%C3%ADvel';
     }
 
     // 7. Usar localização do merchant
@@ -442,26 +442,42 @@ async function createDeal() {
 }
 
 // Obter imagem da oferta
+// Obter imagem da oferta
 async function getDealImage() {
   try {
     // Tenta pegar da URL primeiro
-    const urlValue = getInputValue('deal-image-url', 'URL da imagem', false);
-    if (urlValue && isValidUrl(urlValue)) {
-      return urlValue;
+    const urlInput = document.getElementById('deal-image-url');
+    if (urlInput && urlInput.value.trim()) {
+      const urlValue = urlInput.value.trim();
+      if (isValidUrl(urlValue)) {
+        return urlValue;
+      } else {
+        console.warn('⚠️ URL de imagem inválida:', urlValue);
+      }
     }
   } catch (error) {
-    // Se não tem URL, verifica arquivo
-    try {
-      const imageFile = getElement('deal-image-file', 'Arquivo de imagem');
-      if (imageFile.files && imageFile.files[0]) {
-        return await uploadImageToStorage(imageFile.files[0], auth.currentUser?.uid);
-      }
-    } catch (uploadError) {
-      console.log('📷 Nenhuma imagem fornecida');
-    }
+    console.warn('⚠️ Erro ao processar URL da imagem:', error.message);
   }
-  return '';
+
+  // Se não tem URL válida, verifica arquivo
+  try {
+    const imageFile = document.getElementById('deal-image-file');
+    if (imageFile && imageFile.files && imageFile.files[0]) {
+      console.log('📤 Enviando arquivo de imagem...');
+      const uploadedUrl = await uploadImageToStorage(imageFile.files[0], auth.currentUser?.uid);
+      if (uploadedUrl) {
+        console.log('✅ Imagem enviada:', uploadedUrl);
+        return uploadedUrl;
+      }
+    }
+  } catch (uploadError) {
+    console.warn('⚠️ Erro ao processar arquivo de imagem:', uploadError.message);
+  }
+
+  console.log('📷 Nenhuma imagem fornecida, usando imagem padrão');
+  return 'https://dummyimage.com/500x300/cccccc/666666.png&text=Imagem+Indispon%C3%ADvel';
 }
+
 
 // Resetar formulário
 function resetDealForm() {
@@ -496,16 +512,48 @@ function isValidUrl(string) {
 
 // ========== FUNÇÕES DE SUPORTE ==========
 
+// ========== FUNÇÕES DE SUPORTE ==========
+
 async function uploadImageToStorage(file, merchantId) {
-  // Em produção, implemente com Firebase Storage
-  return new Promise((resolve) => {
-    setTimeout(() => {
+  return new Promise((resolve, reject) => {
+    try {
+      // Para DEMONSTRAÇÃO: Cria um URL local temporário
+      // Em produção, substitua por upload real para Firebase Storage
+      console.log('📤 Simulando upload de imagem:', file.name, file.size);
+
+      // Cria um URL local para a imagem
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
+      reader.onload = (e) => {
+        console.log('✅ Imagem convertida para base64');
+
+        // Em produção, você faria:
+        // 1. Fazer upload para Firebase Storage
+        // 2. Obter URL de download
+        // 3. Retornar URL real
+
+        // Por enquanto, retornamos um placeholder ou URL local
+        resolve(e.target.result); // base64 data URL
+      };
+
+      reader.onerror = (error) => {
+        console.error('❌ Erro ao ler arquivo:', error);
+        reject(error);
+      };
+
       reader.readAsDataURL(file);
-    }, 500);
+
+      // Simula tempo de upload
+      setTimeout(() => {
+        console.log('⏱️ Upload simulado concluído');
+      }, 1000);
+
+    } catch (error) {
+      console.error('❌ Erro no upload de imagem:', error);
+      reject(error);
+    }
   });
 }
+
 
 function showNotification(type, message) {
   const existing = document.querySelector('.deal-notification');
