@@ -19,19 +19,91 @@ const navButtons = document.querySelectorAll('.nav-btn');
 let currentUser = null;
 let currentMerchant = null;
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', () => {
+// ========== INICIALIZAÇÃO ==========
+let isAppInitialized = false;
+
+function initializeApp() {
+  if (isAppInitialized) {
+    console.warn('⚠️ App já inicializado');
+    return;
+  }
+
+  isAppInitialized = true;
+  console.log('🚀 Inicializando app...');
+
   setupEventListeners();
   setupRegisterForm();
   observeAuthState(handleAuthStateChange);
   setupDealForm();
   setupCouponValidation();
-
   setupDiscountCalculator();
   setupDealFormWithMerchantData();
   initializeEditMerchant();
   initializeBadgeOnLoad();
+
+  console.log('✅ App inicializado com sucesso');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('📄 DOM carregado');
+  initializeApp();
 });
+
+// Adicione também no unload para limpar
+window.addEventListener('beforeunload', () => {
+  eventListenersManager.clearAll();
+  cleanupCurrentView();
+});
+
+// ========== GESTÃO DE EVENT LISTENERS ==========
+const eventListenersManager = {
+  listeners: new Map(),
+
+  add(element, event, handler, options) {
+    if (!this.listeners.has(element)) {
+      this.listeners.set(element, []);
+    }
+    element.addEventListener(event, handler, options);
+    this.listeners.get(element).push({ event, handler });
+  },
+
+  removeAll(element) {
+    if (this.listeners.has(element)) {
+      this.listeners.get(element).forEach(({ event, handler }) => {
+        element.removeEventListener(event, handler);
+      });
+      this.listeners.delete(element);
+    }
+  },
+
+  removeAllFromSelector(selector) {
+    document.querySelectorAll(selector).forEach(element => {
+      this.removeAll(element);
+    });
+  },
+
+  clearAll() {
+    this.listeners.forEach((listeners, element) => {
+      listeners.forEach(({ event, handler }) => {
+        element.removeEventListener(event, handler);
+      });
+    });
+    this.listeners.clear();
+  }
+};
+
+// Função helper para debounce
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 
 // Inicializar badge quando a página carrega
 function initializeMerchantBadge() {
@@ -47,47 +119,56 @@ function initializeMerchantBadge() {
   }
 }
 
-// Chamar após o DOM estar pronto
-document.addEventListener('DOMContentLoaded', initializeMerchantBadge);
-
 // ========== SETUP DE EVENTOS ==========
 
 function setupEventListeners() {
   // Login com Google
-  googleLoginBtn.addEventListener('click', async () => {
-    try {
-      showLoading(true);
-      const user = await loginWithGoogle();
-      if (user) {
-        await handleNewLogin(user);
+  eventListenersManager.add(
+    googleLoginBtn,
+    'click',
+    async () => {
+      try {
+        showLoading(true);
+        const user = await loginWithGoogle();
+        if (user) {
+          await handleNewLogin(user);
+        }
+      } catch (error) {
+        console.error('❌ Erro no login:', error);
+        showNotification('error', 'Erro ao fazer login. Tente novamente.');
+      } finally {
+        showLoading(false);
       }
-    } catch (error) {
-      console.error('❌ Erro no login:', error);
-      showNotification('error', 'Erro ao fazer login. Tente novamente.');
-    } finally {
-      showLoading(false);
     }
-  });
+  );
 
   // Logout
-  logoutBtn.addEventListener('click', async () => {
-    try {
-      await logout();
-      showLoginScreen();
-    } catch (error) {
-      console.error('❌ Erro no logout:', error);
+  eventListenersManager.add(
+    logoutBtn,
+    'click',
+    async () => {
+      try {
+        await logout();
+        showLoginScreen();
+      } catch (error) {
+        console.error('❌ Erro no logout:', error);
+      }
     }
-  });
+  );
 
   // Navegação do painel
   navButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const view = btn.dataset.view;
-      showView(view);
-    });
+    eventListenersManager.add(
+      btn,
+      'click',
+      () => {
+        const view = btn.dataset.view;
+        showView(view);
+      }
+    );
   });
 
-  // Botão voltar
+  // Botão voltar (usando delegação de eventos)
   document.addEventListener('click', (e) => {
     if (e.target.classList.contains('btn-back')) {
       showView('deals');
@@ -411,55 +492,144 @@ function showLoading(show) {
 }
 
 // ========== NAVEGAÇÃO DO PAINEL ==========
+// ========== NAVEGAÇÃO DO PAINEL ==========
+let isChangingView = false;
+let pendingViewChange = null;
 
-window.showView = function (viewName) {
-  console.log(`🔄 Mudando para view: ${viewName}`);
-
-  // Atualizar navegação
-  navButtons.forEach(btn => btn.classList.remove('active'));
-  const activeBtn = document.querySelector(`[data-view="${viewName}"]`);
-  if (activeBtn) {
-    activeBtn.classList.add('active');
+window.showView = async function (viewName) {
+  // Se já está mudando, agendar próxima mudança
+  if (isChangingView) {
+    pendingViewChange = viewName;
+    return;
   }
 
-  // Mostrar view
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const targetView = document.getElementById(`view-${viewName}`);
-  if (targetView) {
-    targetView.classList.add('active');
+  // Se é a mesma view, ignorar
+  const currentView = document.querySelector('.view.active');
+  if (currentView && currentView.id === `view-${viewName}`) {
+    return;
   }
 
-  // Atualização simples do badge (só se tiver dados)
-  if (window.currentMerchant) {
-    const badge = document.getElementById('merchant-name-badge');
-    if (badge && window.currentMerchant.tradingName) {
-      // Verificar se já está correto
-      if (badge.textContent !== window.currentMerchant.tradingName) {
-        badge.textContent = window.currentMerchant.tradingName;
-        console.log('✓ Badge corrigido na view:', viewName);
-      }
+  isChangingView = true;
+
+  try {
+    console.log(`🔄 Mudando para view: ${viewName}`);
+
+    // 1. Limpar event listeners específicos da view anterior
+    cleanupCurrentView();
+
+    // 2. Atualizar navegação
+    navButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === viewName);
+    });
+
+    // 3. Mostrar/ocultar views
+    document.querySelectorAll('.view').forEach(v => {
+      v.classList.toggle('active', v.id === `view-${viewName}`);
+    });
+
+    // 4. Atualizar badge se necessário
+    updateMerchantBadge();
+
+    // 5. Carregar dados da nova view
+    await loadViewData(viewName);
+
+  } catch (error) {
+    console.error('❌ Erro ao mudar de view:', error);
+  } finally {
+    isChangingView = false;
+
+    // Processar mudança pendente se houver
+    if (pendingViewChange) {
+      const nextView = pendingViewChange;
+      pendingViewChange = null;
+      setTimeout(() => showView(nextView), 50);
     }
   }
+};
 
-  // Carregar dados específicos da view
+let currentViewListeners = new Set();
+
+function cleanupCurrentView() {
+  // Limpar event listeners específicos da view atual
+  currentViewListeners.forEach(listener => {
+    if (listener.element && listener.handler) {
+      listener.element.removeEventListener(listener.event, listener.handler);
+    }
+  });
+  currentViewListeners.clear();
+}
+
+function addViewListener(element, event, handler) {
+  element.addEventListener(event, handler);
+  currentViewListeners.add({ element, event, handler });
+}
+
+// No showView, substitua:
+async function loadViewData(viewName) {
+  if (!currentUser) return;
+
+  // Limpar listeners da view anterior
+  cleanupCurrentView();
+
   switch (viewName) {
     case 'deals':
-      if (currentUser) loadMerchantDeals(currentUser.uid);
+      await loadMerchantDeals(currentUser.uid);
       break;
     case 'stats':
-      if (currentUser) loadStats(currentUser.uid);
+      await loadStats(currentUser.uid);
       break;
     case 'edit-merchant':
-      if (currentUser) {
-        loadMerchantForEdit(currentUser.uid)
-          .then(merchant => {
-            console.log('✅ Dados carregados para edição:', merchant?.tradingName);
-          })
-          .catch(console.error);
+      try {
+        const merchant = await loadMerchantForEdit(currentUser.uid);
+        console.log('✅ Dados carregados para edição:', merchant?.tradingName);
+
+        // Configurar listeners específicos para esta view
+        setupEditMerchantListeners();
+      } catch (error) {
+        console.error('Erro ao carregar merchant para edição:', error);
       }
       break;
+    case 'create-deal':
+      // Inicializar o formulário de criação de oferta
+      initCreateDealForm();
+
+      // Configurar listeners para o formulário de criação
+      setupCreateDealListeners();
+      break;
   }
-};
+}
+
+function setupCreateDealListeners() {
+  const form = document.getElementById('create-deal-form');
+  const descriptionField = document.getElementById('deal-description');
+
+  if (form) {
+    addViewListener(form, 'submit', handleCreateDealSubmit);
+  }
+
+  if (descriptionField) {
+    // Debounce mais longo para campo de descrição
+    const debouncedHandler = debounce(function (e) {
+      // Atualizar contador de caracteres se houver
+      const charCount = e.target.value.length;
+      const counter = document.getElementById('description-counter');
+      if (counter) {
+        counter.textContent = `${charCount}/500`;
+      }
+    }, 500); // 500ms para não travar
+
+    addViewListener(descriptionField, 'input', debouncedHandler);
+  }
+}
+
+function updateMerchantBadge() {
+  if (!window.currentMerchant?.tradingName) return;
+
+  const badge = document.getElementById('merchant-name-badge');
+  if (badge && badge.textContent !== window.currentMerchant.tradingName) {
+    badge.textContent = window.currentMerchant.tradingName;
+  }
+}
 
 // ========== FUNÇÕES AUXILIARES ==========
 
@@ -468,78 +638,176 @@ function setupDiscountCalculator() {
   const dealPriceInput = document.getElementById('deal-price');
   const discountInput = document.getElementById('deal-discount');
 
-  function calculateDiscount() {
-    const original = parseFloat(originalPriceInput.value) || 0;
-    const deal = parseFloat(dealPriceInput.value) || 0;
+  if (!originalPriceInput || !dealPriceInput || !discountInput) {
+    console.warn('Campos de desconto não encontrados');
+    return;
+  }
 
-    if (original > 0 && deal > 0 && deal < original) {
-      const discount = Math.round(((original - deal) / original) * 100);
-      discountInput.value = discount;
-    } else {
-      discountInput.value = '';
+  // Remover readonly se existir
+  discountInput.removeAttribute('readonly');
+  discountInput.placeholder = "Digite ou será calculado";
+
+  // Rastrear o último campo modificado
+  let lastActiveField = null;
+
+  [originalPriceInput, dealPriceInput, discountInput].forEach(input => {
+    eventListenersManager.add(input, 'focus', () => {
+      lastActiveField = input.id;
+    });
+
+    eventListenersManager.add(input, 'blur', () => {
+      // Recalcular ao sair do campo
+      setTimeout(calculate, 100);
+    });
+  });
+
+  function parseNumber(value) {
+    // Converte formato brasileiro para número
+    if (!value && value !== 0) return 0;
+
+    const str = String(value).trim();
+    if (str === '') return 0;
+
+    // Remove tudo exceto números, vírgula e ponto
+    const clean = str.replace(/[^\d,.]/g, '');
+
+    // Se tiver vírgula e ponto, assume que vírgula é decimal
+    if (clean.includes(',') && clean.includes('.')) {
+      // Remove pontos como separador de milhar, mantém vírgula como decimal
+      const parts = clean.split(',');
+      const integerPart = parts[0].replace(/\./g, '');
+      return parseFloat(integerPart + '.' + (parts[1] || '0'));
+    }
+
+    // Se só tem vírgula, substitui por ponto
+    if (clean.includes(',')) {
+      return parseFloat(clean.replace(',', '.'));
+    }
+
+    return parseFloat(clean) || 0;
+  }
+
+  function formatNumber(num, decimals = 2) {
+    if (isNaN(num) || num === null || num === undefined) return '';
+
+    // Formata com vírgula como separador decimal
+    return num.toFixed(decimals).replace('.', ',');
+  }
+
+  function calculate() {
+    const original = parseNumber(originalPriceInput.value);
+    const deal = parseNumber(dealPriceInput.value);
+    const discount = parseNumber(discountInput.value);
+
+    console.log('🔢 Valores:', { original, deal, discount, lastActiveField });
+
+    // Se original for zero, limpar tudo
+    if (original <= 0) {
+      if (dealPriceInput.value) dealPriceInput.value = '';
+      if (discountInput.value) discountInput.value = '';
+      return;
+    }
+
+    // Determinar qual cálculo fazer baseado no último campo modificado
+    switch (lastActiveField) {
+      case 'deal-discount':
+        // Usuário está digitando no campo de desconto
+        if (discount > 0 && discount <= 100) {
+          const calculatedDeal = original - (original * (discount / 100));
+          dealPriceInput.value = formatNumber(calculatedDeal);
+          discountInput.value = formatNumber(discount);
+        } else if (discount > 100) {
+          discountInput.value = '100,00';
+          const calculatedDeal = original - (original * (100 / 100));
+          dealPriceInput.value = formatNumber(calculatedDeal);
+        } else if (discount === 0) {
+          discountInput.value = '0,00';
+          dealPriceInput.value = formatNumber(original);
+        }
+        break;
+
+      case 'deal-price':
+        // Usuário está digitando no campo de preço com desconto
+        if (deal > 0) {
+          if (deal < original) {
+            const calculatedDiscount = ((original - deal) / original) * 100;
+            discountInput.value = formatNumber(calculatedDiscount);
+          } else {
+            discountInput.value = '0,00';
+            dealPriceInput.value = formatNumber(original);
+          }
+        }
+        break;
+
+      case 'deal-original-price':
+      default:
+        // Se usuário mudou o preço original, recalcular baseado no que faz sentido
+        if (discount > 0) {
+          // Se já tem desconto, recalcular preço com desconto
+          const validDiscount = Math.min(discount, 100);
+          const calculatedDeal = original - (original * (validDiscount / 100));
+          dealPriceInput.value = formatNumber(calculatedDeal);
+          discountInput.value = formatNumber(validDiscount);
+        } else if (deal > 0) {
+          // Se já tem preço com desconto, recalcular desconto
+          if (deal < original) {
+            const calculatedDiscount = ((original - deal) / original) * 100;
+            discountInput.value = formatNumber(calculatedDiscount);
+          } else {
+            discountInput.value = '0,00';
+            dealPriceInput.value = formatNumber(original);
+          }
+        }
+        break;
     }
   }
 
-  originalPriceInput?.addEventListener('input', calculateDiscount);
-  dealPriceInput?.addEventListener('input', calculateDiscount);
+  // Adicionar listeners com debounce mais curto para melhor resposta
+  [originalPriceInput, dealPriceInput, discountInput].forEach(input => {
+    eventListenersManager.add(
+      input,
+      'input',
+      debounce(calculate, 150)
+    );
+  });
+
+  // Calcular inicialmente se já houver valores
+  setTimeout(calculate, 500);
 }
 
 function setupDealFormWithMerchantData() {
-
-  const observer = new MutationObserver(() => {
+  // Adicionar event listener para quando a view create-deal for ativada
+  function initCreateDealForm() {
     const createDealView = document.getElementById('view-create-deal');
-    if (createDealView && createDealView.classList.contains('active')) {
-      if (currentMerchant && currentMerchant.location) {
-        // Preencher campos de localização (somente leitura)
-        const addressField = document.getElementById('deal-address');
-        if (addressField && !addressField.value) {
-          const loc = currentMerchant.location;
-          addressField.value = `${loc.address}, ${loc.number} - ${loc.neighborhood}, ${loc.city} - ${loc.state}`;
-          addressField.readOnly = true;
-          addressField.title = "Endereço definido no cadastro do estabelecimento";
-        }
+    if (!createDealView) return;
 
-        const neighborhoodField = document.getElementById('deal-neighborhood');
-        if (neighborhoodField && !neighborhoodField.value) {
-          neighborhoodField.value = currentMerchant.location.neighborhood;
-          neighborhoodField.readOnly = true;
-        }
+    if (currentMerchant && currentMerchant.location) {
+      // Preencher campos de localização (somente leitura)
+      const addressField = document.getElementById('deal-address');
+      if (addressField && !addressField.value) {
+        const loc = currentMerchant.location;
+        addressField.value = `${loc.address}, ${loc.number} - ${loc.neighborhood}, ${loc.city} - ${loc.state}`;
+        addressField.readOnly = true;
+        addressField.title = "Endereço definido no cadastro do estabelecimento";
+      }
 
-        const radiusField = document.getElementById('deal-radius');
-        if (radiusField) {
-          radiusField.value = currentMerchant.location.deliveryRadius || 5;
-          radiusField.disabled = true;
-          radiusField.title = "Raio de atendimento definido no cadastro";
-        }
+      const neighborhoodField = document.getElementById('deal-neighborhood');
+      if (neighborhoodField && !neighborhoodField.value) {
+        neighborhoodField.value = currentMerchant.location.neighborhood;
+        neighborhoodField.readOnly = true;
+      }
 
-        // Adicionar nota informativa
-        const locationSection = document.querySelector('h3[style*="Localização"]');
-        if (locationSection) {
-          const note = document.createElement('div');
-          note.style.cssText = `
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            border-radius: 8px;
-            padding: 12px;
-            margin: 16px 0;
-            font-size: 0.875rem;
-            color: #0369a1;
-          `;
-          note.innerHTML = `
-            <strong>ℹ️ Informação:</strong> 
-            A localização e raio de atendimento são herdados do seu cadastro. 
-            Para alterar, atualize seus dados no perfil do estabelecimento.
-          `;
-          locationSection.parentNode.insertBefore(note, locationSection.nextSibling);
-        }
+      const radiusField = document.getElementById('deal-radius');
+      if (radiusField) {
+        radiusField.value = currentMerchant.location.deliveryRadius || 5;
+        radiusField.disabled = true;
+        radiusField.title = "Raio de atendimento definido no cadastro";
       }
     }
-  });
+  }
 
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
+  // Adicionar ao loadViewData para ser chamado quando a view for carregada
+  window.initCreateDealForm = initCreateDealForm;
 }
 
 async function loadInitialData() {

@@ -421,34 +421,35 @@
               <div class="form-group">
                 <label>Preço Original (R$) *</label>
                 <input
-                  type="number"
+                  type="text"
                   id="deal-original-price"
                   required
-                  step="0.01"
-                  min="0"
-                  placeholder="40.00"
+                  inputmode="decimal"
+                  pattern="[0-9]+([,\.][0-9]{1,2})?"
+                  placeholder="40,00"
                 />
               </div>
 
               <div class="form-group">
-                <label>Preço com Desconto (R$) *</label>
+                <label>Desconto (%) *</label>
                 <input
-                  type="number"
+                  type="text"
+                  id="deal-discount"
+                  inputmode="decimal"
+                  pattern="[0-9]+([,\.][0-9]{1,2})?"
+                  placeholder="Digite ou será calculado"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Preço com Desconto (R$)</label>
+                <input
+                  type="text"
                   id="deal-price"
                   required
-                  step="0.01"
-                  min="0"
-                  placeholder="20.00"
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Desconto (%)</label>
-                <input
-                  type="number"
-                  id="deal-discount"
-                  readonly
-                  placeholder="Calculado automaticamente"
+                  inputmode="decimal"
+                  pattern="[0-9]+([,\.][0-9]{1,2})?"
+                  placeholder="20,00"
                 />
               </div>
             </div>
