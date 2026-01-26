@@ -153,6 +153,87 @@
         </div>
       </section>
 
+      <div id="profile" class="view hidden">
+        <div class="view-header">
+          <h1>👤 Meu Perfil</h1>
+          <p>Personalize sua experiência no Radar</p>
+        </div>
+
+        <div class="profile-container">
+          <div class="card profile-card">
+            <div class="card-header">
+              <div style="display: flex; align-items: center; gap: 15px">
+                <span class="card-icon">🔔</span>
+                <div class="card-title">
+                  <h3>Alertas</h3>
+                  <p>Receba avisos no bairro</p>
+                </div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="pref-notifications" />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card profile-card">
+            <div class="card-header">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <span class="card-icon">🎯</span>
+                <div class="card-title">
+                  <h3>Meu Radar</h3>
+                  <p>Selecione o que você quer ver primeiro</p>
+                </div>
+              </div>
+            </div>
+            <div id="category-interests" class="interests-grid"></div>
+          </div>
+
+          <div class="card profile-card">
+            <div class="card-header">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <span class="card-icon">📍</span>
+                <div class="card-title">
+                  <h3>Raio de Alcance</h3>
+                  <p>
+                    Ver ofertas em até:
+                    <strong id="radius-value" style="color: #2196f3"
+                      >10km</strong
+                    >
+                  </p>
+                </div>
+              </div>
+            </div>
+            <input
+              type="range"
+              id="pref-radius"
+              min="0"
+              max="6"
+              value="4"
+              class="range-slider"
+            />
+            <div
+              class="slider-labels"
+              style="
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                margin-top: 8px;
+                color: #64748b;
+                font-size: 0.8rem;
+              "
+            >
+              <span>1km</span>
+              <span>20km (máximo)</span>
+            </div>
+          </div>
+
+          <button id="btn-logout" class="btn-secondary btn-full">
+            Sair da Conta
+          </button>
+        </div>
+      </div>
+
       <!-- Bottom Navigation -->
       <nav
         class="bottom-nav"

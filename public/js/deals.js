@@ -7,101 +7,68 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Configurações do Radar
-const RAIO_MAXIMO_KM = 15; // Alcance do radar
+const getPreferredRadius = () => parseInt(localStorage.getItem('userRadius')) || 10;
+const CATEGORY_EMOJIS = {
+  butcher: '🥩', bakery: '🥖', 'home-gifts': '🏠', electronics: '💻',
+  pharmacy: '💊', 'fruit-veg': '🍎', petshop: '🐾', pizzeria: '🍕',
+  restaurant: '🍽️', services: '🛠️', supermarket: '🛒', clothing: '👕', other: '❓'
+};
+
+// Tradução dos IDs do banco para exibição ao público
+const CATEGORY_LABELS = {
+  butcher: 'Açougue',
+  bakery: 'Padaria',
+  'home-gifts': 'Casa & Presentes',
+  electronics: 'Tecnologia',
+  pharmacy: 'Farmácia',
+  'fruit-veg': 'Hortifruti',
+  petshop: 'Pet Shop',
+  pizzeria: 'Pizzaria',
+  restaurant: 'Restaurante',
+  services: 'Serviços',
+  supermarket: 'Supermercado',
+  clothing: 'Moda & Vestuário'
+};
+
 const TIMEOUT_GPS = 5000; // 5 segundos para desistir do GPS
 
 export async function loadNearbyDeals() {
-  console.log('🚀 Iniciando loadNearbyDeals');
-  showLoading(true);
+  console.log('🚀 Iniciando loadNearbyDeals com filtros do usuário');
+  const userInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+  const maxRadius = getPreferredRadius();
+
+  // Limpa a lista atual para evitar duplicatas ao trocar de aba
+  const dealsList = document.getElementById('deals-list');
+  if (dealsList) dealsList.innerHTML = '';
 
   try {
-    // 1. Tenta obter localização
-    const position = await getCurrentLocation(TIMEOUT_GPS).catch(err => {
-      console.warn("⚠️ GPS falhou ou expirou. Usando fallback.");
-      return null;
-    });
-
+    const position = await getCurrentLocation(TIMEOUT_GPS).catch(() => null);
     const dealsRef = collection(db, 'deals');
-    let q;
-
-    // Lógica de Query
-    if (position) {
-      q = query(
-        dealsRef,
-        where('status', '==', 'active'));
-    } else {
-      q = query(
-        dealsRef,
-        where('status', '==', 'active')
-      );
-      console.log('🔍 Buscando todas as ofertas ativas (Fallback)');
-    }
-
+    const q = query(dealsRef, where('status', '==', 'active'));
     const snapshot = await getDocs(q);
 
     let deals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
 
+    // 1. Filtro de Validade (Mantendo sua lógica de Timezone Offset)
     deals = deals.filter(deal => {
+      if (deal.isUnlimited) return true;
       if (!deal.expiresAt) return true;
-
-      if (deal.isUnlimited === true) return true;
-
-      try {
-        // Converter Timestamp do Firestore para Date
-        let expiresDate;
-        if (deal.expiresAt.toDate) {
-          expiresDate = deal.expiresAt.toDate();
-        } else if (deal.expiresAt instanceof Date) {
-          expiresDate = deal.expiresAt;
-        } else {
-          expiresDate = new Date(deal.expiresAt);
-        }
-
-        // Data atual
-        const now = new Date();
-
-        // ✅ CORREÇÃO: Usar timezone offset dinâmico
-        // O Firestore Timestamp é em UTC, precisamos ajustar para o fuso local
-        const timezoneOffsetMinutes = now.getTimezoneOffset();
-
-        // Converter expiresDate (UTC) para horário local
-        const expiresLocal = new Date(expiresDate.getTime() - (timezoneOffsetMinutes * 60 * 1000));
-
-        // Converter now para UTC para comparação correta
-        const nowUTC = new Date(now.getTime() + (timezoneOffsetMinutes * 60 * 1000));
-
-        // Debug para verificar
-        console.log(`📍 ${deal.title || deal.id}:`);
-        console.log(`   expiresDate (UTC): ${expiresDate.toISOString()}`);
-        console.log(`   expiresLocal: ${expiresLocal.toISOString()}`);
-        console.log(`   nowUTC: ${nowUTC.toISOString()}`);
-        console.log(`   timezoneOffset: ${timezoneOffsetMinutes}min`);
-        console.log(`   válida? ${expiresDate >= nowUTC}`);
-
-        // Comparar ambos em UTC
-        return expiresDate >= nowUTC;
-
-      } catch (e) {
-        console.error(`❌ Erro ao verificar data da oferta ${deal.id}:`, e);
-        return false;
-      }
+      const nowUTC = new Date(new Date().getTime() + (new Date().getTimezoneOffset() * 60 * 1000));
+      return deal.expiresAt.toDate() >= nowUTC;
     });
 
-    console.log(`✅ ${deals.length} ofertas válidas após filtro de data`);
+    // 2. Filtro de Interesses (Categorias)
+    if (userInterests.length > 0) {
+      deals = deals.filter(deal => userInterests.includes(deal.category));
+    }
 
+    // 3. Filtro de Distância Dinâmico
     if (position && deals.length > 0) {
       const { latitude, longitude } = position.coords;
 
       deals = deals.map(deal => {
-
         const loc = deal.merchantLocation || deal.location;
         if (!loc || !loc.latitude) return { ...deal, distance: 999 };
-
-        //console.log(`latitude: ${latitude}, longitude: ${longitude}, loc.latitude: ${loc.latitude}, loc.longitude: ${loc.longitude}`);
-
-        console.log(`oferta: ${JSON.stringify(deal)}`);
-
-        console.log(`position: ${JSON.stringify(position)}`);
 
         const dist = calcularDistancia(latitude, longitude, loc.latitude, loc.longitude);
         return {
@@ -109,23 +76,15 @@ export async function loadNearbyDeals() {
           distance: dist,
           distanceText: dist < 1 ? `${(dist * 1000).toFixed(0)}m` : `${dist.toFixed(1)}km`
         };
-      }).filter(deal => deal.distance <= RAIO_MAXIMO_KM);
+      }).filter(deal => deal.distance <= maxRadius); // Usa o raio do perfil aqui!
 
       deals.sort((a, b) => a.distance - b.distance);
     }
 
-    //console.log(`position: ${JSON.stringify(position)}`);
-
-    console.log(`✅ ${deals.length} ofertas válidas após coordenadas`);
-
-    // Só chama o render se deals for um array (mesmo que vazio)
     renderDeals(deals);
-
   } catch (error) {
     console.error("❌ Erro crítico:", error);
-    renderDeals([]); // Mostra estado vazio em caso de erro
-  } finally {
-    showLoading(false);
+    renderDeals([]);
   }
 }
 
@@ -184,8 +143,6 @@ function createDealCard(deal) {
   const card = document.createElement('div');
   card.className = 'deal-card';
 
-  console.log(`deal: ${Array.isArray(deal)}, deal.deliveryOptions: ${deal.deliveryOptions}`);
-
   const options = deal.deliveryOptions || deal.merchantLocation?.deliveryOptions || [];
 
   const deliveryOptions = [];
@@ -196,9 +153,16 @@ function createDealCard(deal) {
     ? `<span>♾️ Estoque Ilimitado</span>`
     : `<span>📦 ${deal.stockAvailable} disponíveis</span>`;
 
+  const categoryName = CATEGORY_LABELS[deal.category] || deal.category;
+  const categoryEmoji = CATEGORY_EMOJIS[deal.category] || '🏷️';
+
   card.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/300x200'}" alt="${deal.title}">
     <div class="deal-info">
+      <div class="category-tag">
+        <span class="category-icon">${categoryEmoji}</span>
+        <span class="category-text">${categoryName}</span>
+      </div>
       <h3>${deal.title}</h3>
       <p class="deal-description">${deal.description}</p>
       

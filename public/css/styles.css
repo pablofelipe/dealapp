@@ -1052,3 +1052,175 @@ body {
 #google-login-btn {
   margin-top: 24px;
 }
+
+.profile-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding-bottom: 80px; /* Espaço para o nav inferior */
+}
+
+.profile-card {
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.card-icon {
+  font-size: 1.5rem;
+}
+
+.card-title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.card-title p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* Pilulas de Categoria */
+.interests-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.category-pill {
+  padding: 8px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-pill.active {
+  background: #2196f3;
+  color: white;
+  border-color: #2196f3;
+}
+
+/* Slider de Raio */
+.range-slider {
+  width: 100%;
+  margin-top: 15px;
+  accent-color: #2196f3;
+}
+
+.slider-container {
+  margin-top: 15px;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 0 5px;
+}
+
+.slider-labels span {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.range-slider {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  outline: none;
+  accent-color: #2196f3;
+  cursor: pointer;
+}
+
+.category-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #94a3b8; /* Cinza suave */
+  text-transform: capitalize;
+  margin-bottom: 4px;
+}
+
+.category-icon {
+  font-size: 0.9rem;
+}
+
+/* Container Geral do Perfil */
+#profile {
+  background-color: #0f172a; /* Azul escuro do fundo do app */
+  color: white;
+  min-height: 100vh;
+}
+
+.profile-card {
+  background: #1e293b; /* Azul escuro consistente com os cards de oferta */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Força tudo para a esquerda */
+  text-align: left;
+}
+
+/* Garante que o Header do card ocupe a largura total para o switch funcionar */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* Títulos e Subtítulos */
+.card-title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #ffffff;
+}
+
+.card-title p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #94a3b8; /* Cinza azulado para melhor leitura no escuro */
+}
+
+/* Ajuste das Pílulas para leitura clara */
+.interests-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.category-pill {
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(33, 150, 243, 0.1);
+  color: #cbd5e1; /* Cor clara para leitura em estado inativo */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.category-pill.active {
+  background: #2196f3 !important;
+  color: white !important;
+  border-color: #2196f3;
+}

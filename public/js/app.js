@@ -42,6 +42,98 @@ function setupEventListeners() {
   document.querySelector('.close')?.addEventListener('click', closeModal);
 }
 
+// 1. Defina a lista de categorias (sincronizada com o lojista)
+const CATEGORIES = [
+  { id: 'butcher', label: 'Açougue', emoji: '🥩' },
+  { id: 'bakery', label: 'Padaria', emoji: '🥖' },
+  { id: 'home-gifts', label: 'Casa', emoji: '🏠' },
+  { id: 'electronics', label: 'Tecnologia', emoji: '💻' },
+  { id: 'pharmacy', label: 'Farmácia', emoji: '💊' },
+  { id: 'fruit-veg', label: 'Hortifruti', emoji: '🍎' },
+  { id: 'petshop', label: 'Pet Shop', emoji: '🐾' },
+  { id: 'pizzeria', label: 'Pizzaria', emoji: '🍕' },
+  { id: 'restaurant', label: 'Restaurante', emoji: '🍽️' },
+  { id: 'services', label: 'Serviços', emoji: '🛠️' },
+  { id: 'supermarket', label: 'Mercado', emoji: '🛒' },
+  { id: 'clothing', label: 'Moda', emoji: '👕' }
+];
+
+// 2. Função para renderizar as pílulas no Perfil
+function renderCategoryInterests() {
+  const container = document.getElementById('category-interests');
+  if (!container) return;
+
+  // Recupera as preferências já salvas (ou um array vazio)
+  const savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+
+  container.innerHTML = CATEGORIES.map(cat => `
+    <div class="category-pill ${savedInterests.includes(cat.id) ? 'active' : ''}" 
+         data-id="${cat.id}"
+         onclick="toggleInterest('${cat.id}')">
+      ${cat.emoji} ${cat.label}
+    </div>
+  `).join('');
+}
+
+// 3. Função para ativar/desativar um interesse
+window.toggleInterest = function (categoryId) {
+  let savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+
+  if (savedInterests.includes(categoryId)) {
+    // Remove se já existia
+    savedInterests = savedInterests.filter(id => id !== categoryId);
+  } else {
+    // Adiciona se não existia
+    savedInterests.push(categoryId);
+  }
+
+  // Guarda no localStorage
+  localStorage.setItem('userInterests', JSON.stringify(savedInterests));
+
+  // Atualiza o visual
+  renderCategoryInterests();
+
+  // DICA: Aqui no futuro poderemos avisar o Firestore que o usuário mudou os interesses
+};
+
+function setupRadiusSlider() {
+  const slider = document.getElementById('pref-radius');
+  const display = document.getElementById('radius-value');
+
+  // Opções idênticas às do lojista
+  const radiusOptions = [1, 2, 3, 5, 10, 15, 20];
+
+  if (!slider || !display) return;
+
+  // Carregar valor salvo ou definir padrão 10km (índice 4)
+  const savedRadius = parseInt(localStorage.getItem('userRadius')) || 10;
+  const initialIndex = radiusOptions.indexOf(savedRadius);
+  slider.value = initialIndex !== -1 ? initialIndex : 4;
+
+  updateDisplay(radiusOptions[slider.value]);
+
+  slider.addEventListener('input', (e) => {
+    const km = radiusOptions[e.target.value];
+    updateDisplay(km);
+  });
+
+  slider.addEventListener('change', (e) => {
+    const km = radiusOptions[e.target.value];
+    localStorage.setItem('userRadius', km);
+    console.log(`Raio de busca definido para: ${km}km`);
+
+    // recarregar ofertas ao mudar
+    loadNearbyDeals();
+  });
+
+  function updateDisplay(km) {
+    let label = `${km}km`;
+    if (km === 5) label += " (recomendado)";
+    if (km === 20) label += " (máximo)";
+    display.textContent = label;
+  }
+}
+
 async function handleAuthStateChange(user) {
   loading.classList.add('hidden');
 
@@ -91,7 +183,9 @@ async function requestLocationAndLoadDeals() {
     await updateUserLocation(userLocation);
 
     // Buscar ofertas próximas (raio de 10km)
-    await loadDeals(10);
+    const preferredRadius = parseInt(localStorage.getItem('userRadius')) || 10;
+
+    await loadDeals(preferredRadius);
 
   } catch (error) {
     console.error('❌ Erro ao obter localização:', error);
@@ -207,12 +301,24 @@ function switchTab(tab) {
   navItems.forEach(item => item.classList.remove('active'));
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
 
+  const allViews = document.querySelectorAll('.view, .deals-container, #coupons-section');
+  allViews.forEach(view => view.classList.add('hidden'));
+
   if (tab === 'deals') {
     dealsContainer?.classList.remove('hidden');
-    couponsSection?.classList.add('hidden');
-  } else if (tab === 'coupons') {
-    dealsContainer?.classList.add('hidden');
+    loadNearbyDeals();
+  }
+  else if (tab === 'coupons') {
+    const couponsSection = document.getElementById('coupons-section');
     couponsSection?.classList.remove('hidden');
+    if (currentUser) loadMyCoupons(currentUser.uid);
+  }
+  else if (tab === 'profile') {
+    const profileSection = document.getElementById('profile');
+    profileSection?.classList.remove('hidden');
+
+    renderCategoryInterests();
+    setupRadiusSlider();
   }
 }
 
