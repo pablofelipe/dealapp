@@ -137,6 +137,14 @@ function createDealItem(deal) {
     `${deal.merchantLocation.neighborhood || ''} • ${deal.merchantLocation.city || ''} • Raio: ${deal.merchantLocation.deliveryRadius || 0}km` :
     'Sem localização';
 
+  const stockDisplay = deal.isUnlimited
+    ? `<span class="stock-unlimited">♾️ Estoque Ilimitado</span>`
+    : `📦 ${deal.stockAvailable || 0}/${deal.stockTotal || 0} restantes`;
+
+  const dateDisplay = deal.isUnlimited
+    ? `<span class="badge-permanent">♾️ Oferta por tempo indeterminado</span>`
+    : `📅 ${isExpired ? 'Expirado' : 'Até ' + expiresAt.toLocaleDateString('pt-BR')}`;
+
   item.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/120'}" alt="${deal.title}">
     <div class="deal-item-content">
@@ -148,10 +156,10 @@ function createDealItem(deal) {
       <div class="deal-item-meta">
         <span>💰 R$ ${deal.dealPrice.toFixed(2)} (${deal.discount}% OFF)</span>
         <span style="color: ${isLowStock ? '#f59e0b' : '#10b981'}">
-          📦 ${deal.stockAvailable}/${deal.stockTotal} restantes
+          <div class="deal-stock">${stockDisplay}</div>
         </span>
         <span style="color: ${isExpired ? '#ef4444' : '#64748b'}">
-          📅 ${isExpired ? 'Expirado' : 'Até ' + expiresAt.toLocaleDateString('pt-BR')}
+          <div class="deal-validity">${dateDisplay}</div>
         </span>
       </div>
     </div>
@@ -332,8 +340,10 @@ async function createDeal() {
     const description = getInputValue('deal-description', 'Descrição');
     const originalPrice = getNumberValue('deal-original-price', 'Preço original', true, 0.01);
     const dealPrice = getNumberValue('deal-price', 'Preço com desconto', true, 0.01);
-    const stock = getNumberValue('deal-stock', 'Estoque', true, 1);
     const category = getSelectValue('deal-category', 'Categoria');
+    //const stock = getNumberValue('deal-stock', 'Estoque', true, 1);
+    const isUnlimited = document.getElementById('unlimited-stock').checked;
+    const stock = isUnlimited ? 999999 : parseInt(document.getElementById('deal-stock').value);
 
     // 4. Validações de preço
     validatePrices(originalPrice, dealPrice);
@@ -365,6 +375,7 @@ async function createDeal() {
       discount,
       stockTotal: stock,
       stockAvailable: stock,
+      isUnlimited: isUnlimited,
       category,
 
       // Referência ao merchant
@@ -537,6 +548,26 @@ export function setupDealForm() {
       await createDeal();
     });
     console.log('✅ Formulário de oferta configurado.');
+
+    const unlimitedCheckbox = document.getElementById('unlimited-stock');
+    const stockInput = document.getElementById('deal-stock');
+
+    if (unlimitedCheckbox && stockInput) {
+      unlimitedCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          stockInput.value = 999999;
+          stockInput.disabled = true;
+          stockInput.style.opacity = "0.5";
+          stockInput.removeAttribute('required');
+        } else {
+          stockInput.value = "";
+          stockInput.disabled = false;
+          stockInput.style.opacity = "1";
+          stockInput.setAttribute('required', '');
+        }
+      });
+    }
+
   } catch (error) {
     console.warn('⚠️ Formulário de oferta não encontrado:', error.message);
   }
@@ -579,7 +610,6 @@ window.toggleDealStatus = async function (dealId, currentStock) {
 
     const dealData = dealSnap.data();
     const isActive = dealData.status === 'active';
-    const actionVerb = isActive ? 'pausar' : 'ativar';
     const actionPast = isActive ? 'pausada' : 'ativada';
     const confirmationMsg = isActive
       ? 'Ao pausar, a oferta não será mais visível para os clientes.\nTem certeza que deseja pausar esta oferta?'

@@ -44,6 +44,8 @@ export async function loadNearbyDeals() {
     deals = deals.filter(deal => {
       if (!deal.expiresAt) return true;
 
+      if (deal.isUnlimited === true) return true;
+
       try {
         // Converter Timestamp do Firestore para Date
         let expiresDate;
@@ -184,9 +186,15 @@ function createDealCard(deal) {
 
   console.log(`deal: ${Array.isArray(deal)}, deal.deliveryOptions: ${deal.deliveryOptions}`);
 
+  const options = deal.deliveryOptions || deal.merchantLocation?.deliveryOptions || [];
+
   const deliveryOptions = [];
-  if (deal.deliveryOptions?.includes('pickup')) deliveryOptions.push('🏪 Retirada');
-  if (deal.deliveryOptions?.includes('delivery')) deliveryOptions.push('🚚 Entrega');
+  if (options.includes('pickup')) deliveryOptions.push('🏪 Retirada');
+  if (options.includes('delivery')) deliveryOptions.push('🚚 Entrega');
+
+  const stockDisplay = deal.isUnlimited
+    ? `<span>♾️ Estoque Ilimitado</span>`
+    : `<span>📦 ${deal.stockAvailable} disponíveis</span>`;
 
   card.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/300x200'}" alt="${deal.title}">
@@ -206,7 +214,7 @@ function createDealCard(deal) {
       </div>
       
       <div class="deal-stock">
-        <span>📦 ${deal.stockAvailable} disponíveis</span>
+        ${stockDisplay}
         ${deliveryOptions.length > 0 ? `<span>${deliveryOptions.join(' • ')}</span>` : ''}
       </div>
     </div>
@@ -229,6 +237,11 @@ function showDealModal(deal) {
   if (deal.deliveryOptions?.includes('pickup')) deliveryInfo.push('Retirada no local');
   if (deal.deliveryOptions?.includes('delivery')) deliveryInfo.push('Entrega em domicílio');
 
+
+  const stockDisplay = deal.isUnlimited
+    ? `<span>♾️ Estoque Ilimitado</span>`
+    : `<span>📦 Apenas ${deal.stockAvailable} unidades disponíveis</span>`;
+
   details.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/500x300'}" alt="${deal.title}">
     <h2>${deal.title}</h2>
@@ -242,7 +255,7 @@ function showDealModal(deal) {
       <span class="current" style="font-size: 28px; font-weight: bold; color: #2196F3;">Por R$ ${deal.dealPrice.toFixed(2)}</span>
       <span class="discount" style="background: #ff5722; color: white; padding: 4px 12px; border-radius: 6px; font-weight: bold;">${deal.discount}% OFF</span>
     </div>
-    <p class="stock-info" style="color: #64748b; margin-bottom: 12px;">📦 Apenas ${deal.stockAvailable} unidades disponíveis</p>
+    <p class="stock-info" style="color: #64748b; margin-bottom: 12px;">${stockDisplay}</p>
     ${deliveryInfo.length > 0 ? `<p style="color: #64748b; margin-bottom: 12px;">✅ ${deliveryInfo.join(' • ')}</p>` : ''}
     <p style="color: #64748b; font-size: 14px;">📍 ${deal.merchantLocation?.address || 'Ver localização no mapa'}</p>
   `;
