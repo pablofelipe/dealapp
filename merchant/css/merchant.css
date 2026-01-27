@@ -9,12 +9,12 @@
   --success: #4caf50;
   --danger: #f44336;
   --warning: #ff9800;
-  --text-primary: #1a1a1a;
-  --text-secondary: #6b7280;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
   --text-light: #9ca3af;
   --divider: #e5e7eb;
-  --background: #f9fafb;
-  --surface: #ffffff;
+  --background: #0f172a;
+  --surface: #1e293b;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md:
     0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -142,7 +142,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 50%, #e3f2fd 100%);
+  background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
 }
 
 .login-container {

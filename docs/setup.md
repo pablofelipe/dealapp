@@ -1,4 +1,4 @@
-# Guia de Setup - Radar de Ofertas
+# Guia de Setup - Radar da Oferta
 
 ## Pré-requisitos
 
