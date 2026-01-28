@@ -91,27 +91,29 @@ function renderCategoryInterests() {
 window.toggleInterest = async function (categoryId) {
   let savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
 
-  if (savedInterests.includes(categoryId)) {
+  // 1. Determine se está adicionando ANTES de alterar o array
+  const isAdding = !savedInterests.includes(categoryId);
+
+  if (!isAdding) {
     savedInterests = savedInterests.filter(id => id !== categoryId);
   } else {
     savedInterests.push(categoryId);
   }
 
-  // 1. Mantém o salvamento local para velocidade (UI instantânea)
   localStorage.setItem('userInterests', JSON.stringify(savedInterests));
   renderCategoryInterests();
 
-  const user = auth.currentUser; // Pega o usuário logado
+  const user = auth.currentUser;
   if (user) {
     try {
-      const userRef = doc(db, "users", user.uid); // Referência ao doc do usuário
+      const userRef = doc(db, "users", user.uid);
+
       await updateDoc(userRef, {
         interests: savedInterests,
-        lastUpdate: serverTimestamp() // Importante para sabermos quando ele mudou
+        lastUpdate: serverTimestamp()
       });
-      console.log("Interesses atualizados no Firestore!");
 
-      const isAdding = !savedInterests.includes(categoryId);
+      console.log("Interesses atualizados no Firestore!");
 
       await syncTopicSubscription(categoryId, isAdding);
 
@@ -165,14 +167,14 @@ async function syncInterests() {
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
 
-    if (userSnap.exists() && userSnap.data().interests) {
-      // Se já tem no Firestore, o Firestore manda no LocalStorage
-      localStorage.setItem('userInterests', JSON.stringify(userSnap.data().interests));
-    } else {
-      // Se não tem no Firestore, salva o perfil padrão lá agora
-      const currentLocal = JSON.parse(localStorage.getItem('userInterests') || '[]');
-      if (currentLocal.length > 0) {
-        await updateDoc(userRef, { interests: currentLocal }, { merge: true });
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      if (userData.interests) {
+        localStorage.setItem('userInterests', JSON.stringify(userData.interests));
+      }
+      // ✅ Sincroniza o status de notificação do banco para o local
+      if (userData.notificationsEnabled !== undefined) {
+        localStorage.setItem('notificationsEnabled', userData.notificationsEnabled.toString());
       }
     }
     renderCategoryInterests();
@@ -366,6 +368,31 @@ function switchTab(tab) {
     renderCategoryInterests();
     setupRadiusSlider();
     syncInterests();
+
+    // --- VÍNCULO DO SWITCH DE ALERTAS ---
+    const alertSwitch = document.getElementById('pref-notifications');
+    if (alertSwitch && auth.currentUser) {
+      // Tenta ler do localStorage primeiro para ser rápido, depois validamos com o banco
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      getDoc(userRef).then((docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          // Seta o switch baseado no campo do banco (default false se não existir)
+          alertSwitch.checked = data.notificationsEnabled || false;
+        }
+      });
+
+      alertSwitch.onchange = async (e) => {
+        const isChecked = e.target.checked;
+        if (isChecked) {
+          await enableNotifications();
+        } else {
+          // Desativa direto no banco
+          const userRef = doc(db, "users", auth.currentUser.uid);
+          await updateDoc(userRef, { notificationsEnabled: false });
+        }
+      };
+    }
   }
 }
 
@@ -407,6 +434,33 @@ async function syncTopicSubscription(categoryId, isSubscribed) {
     console.log(`📡 Notificações para ${categoryId}: ${isSubscribed ? 'Ativadas' : 'Desativadas'}`);
   } catch (error) {
     console.error("Erro ao sincronizar tópico:", error);
+  }
+}
+
+// Função para ativar notificações
+async function enableNotifications() {
+  try {
+    const messaging = getMessaging();
+    const token = await getToken(messaging, {
+      vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ'
+    });
+
+    if (token) {
+      console.log("Token gerado:", token);
+      if (auth.currentUser) {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        // ✅ Salvando na base de dados e no cache local
+        await updateDoc(userRef, {
+          fcmToken: token,
+          notificationsEnabled: true,
+          lastTokenUpdate: serverTimestamp()
+        }, { merge: true });
+        localStorage.setItem('notificationsEnabled', 'true');
+        console.log("✅ Preferência de notificação salva no Firestore");
+      }
+    }
+  } catch (error) {
+    console.error("Erro ao ativar notificações:", error);
   }
 }
 

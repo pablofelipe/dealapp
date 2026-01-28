@@ -85,7 +85,19 @@ export async function loadNearbyDeals() {
         };
       }).filter(deal => deal.distance <= maxRadius); // Usa o raio do perfil aqui!
 
-      deals.sort((a, b) => a.distance - b.distance);
+      //deals.sort((a, b) => a.distance - b.distance);
+
+      // Ordena primariamente por data (mais nova primeiro)
+      deals.sort((a, b) => {
+        const dataA = a.createdAt?.toDate?.() || new Date(0);
+        const dataB = b.createdAt?.toDate?.() || new Date(0);
+
+        if (dataB - dataA !== 0) {
+          return dataB - dataA; // Mais recente primeiro
+        }
+        // Se forem do mesmo segundo, desempata pela distância
+        return a.distance - b.distance;
+      });
     }
 
     renderDeals(deals);
