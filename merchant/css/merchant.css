@@ -1122,3 +1122,44 @@ body {
   cursor: not-allowed;
   border-color: #ddd;
 }
+
+/* Estilos Exclusivos para o Preview da Oferta */
+#preview-card-container .preview-deal-card {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  color: #1e293b;
+  text-align: left;
+}
+
+#preview-card-container .preview-deal-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+#preview-card-container .preview-deal-content {
+  padding: 15px;
+}
+
+#preview-card-container .preview-merchant-tag {
+  font-size: 0.75rem;
+  color: #2196f3;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+#preview-card-container .preview-price-old {
+  text-decoration: line-through;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+#preview-card-container .preview-price-new {
+  color: #2196f3;
+  font-weight: bold;
+  font-size: 1.4rem;
+  margin-left: 8px;
+}

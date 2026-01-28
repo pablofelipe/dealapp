@@ -543,6 +543,10 @@ window.showView = async function (viewName) {
     // 5. Carregar dados da nova view
     await loadViewData(viewName);
 
+    if (window.closePreview) {
+      window.closePreview();
+    }
+
   } catch (error) {
     console.error('❌ Erro ao mudar de view:', error);
   } finally {
@@ -643,146 +647,50 @@ function updateMerchantBadge() {
 
 // ========== FUNÇÕES AUXILIARES ==========
 
-function setupDiscountCalculator() {
+/**
+ * Garante que os cálculos de desconto funcionem
+ */
+export function setupDiscountCalculator() {
   const originalPriceInput = document.getElementById('deal-original-price');
   const dealPriceInput = document.getElementById('deal-price');
   const discountInput = document.getElementById('deal-discount');
 
+  // VERIFICAÇÃO DE SEGURANÇA: Só prossegue se os campos existirem
   if (!originalPriceInput || !dealPriceInput || !discountInput) {
-    console.warn('Campos de desconto não encontrados');
     return;
   }
 
-  // Remover readonly se existir
-  discountInput.removeAttribute('readonly');
-  discountInput.placeholder = "Digite ou será calculado";
-
-  // Rastrear o último campo modificado
   let lastActiveField = null;
 
-  [originalPriceInput, dealPriceInput, discountInput].forEach(input => {
-    eventListenersManager.add(input, 'focus', () => {
-      lastActiveField = input.id;
-    });
+  // Funções auxiliares (internas para não poluir o escopo global)
+  const parseNumber = (value) => {
+    if (!value) return 0;
+    return parseFloat(String(value).replace(',', '.')) || 0;
+  };
 
-    eventListenersManager.add(input, 'blur', () => {
-      // Recalcular ao sair do campo
-      setTimeout(calculate, 100);
-    });
-  });
+  const formatNumber = (num) => num.toFixed(2).replace('.', ',');
 
-  function parseNumber(value) {
-    // Converte formato brasileiro para número
-    if (!value && value !== 0) return 0;
-
-    const str = String(value).trim();
-    if (str === '') return 0;
-
-    // Remove tudo exceto números, vírgula e ponto
-    const clean = str.replace(/[^\d,.]/g, '');
-
-    // Se tiver vírgula e ponto, assume que vírgula é decimal
-    if (clean.includes(',') && clean.includes('.')) {
-      // Remove pontos como separador de milhar, mantém vírgula como decimal
-      const parts = clean.split(',');
-      const integerPart = parts[0].replace(/\./g, '');
-      return parseFloat(integerPart + '.' + (parts[1] || '0'));
-    }
-
-    // Se só tem vírgula, substitui por ponto
-    if (clean.includes(',')) {
-      return parseFloat(clean.replace(',', '.'));
-    }
-
-    return parseFloat(clean) || 0;
-  }
-
-  function formatNumber(num, decimals = 2) {
-    if (isNaN(num) || num === null || num === undefined) return '';
-
-    // Formata com vírgula como separador decimal
-    return num.toFixed(decimals).replace('.', ',');
-  }
-
-  function calculate() {
+  const calculate = () => {
     const original = parseNumber(originalPriceInput.value);
     const deal = parseNumber(dealPriceInput.value);
     const discount = parseNumber(discountInput.value);
 
-    console.log('🔢 Valores:', { original, deal, discount, lastActiveField });
+    if (original <= 0) return;
 
-    // Se original for zero, limpar tudo
-    if (original <= 0) {
-      if (dealPriceInput.value) dealPriceInput.value = '';
-      if (discountInput.value) discountInput.value = '';
-      return;
+    if (lastActiveField === 'deal-discount') {
+      const calculatedDeal = original - (original * (discount / 100));
+      dealPriceInput.value = formatNumber(calculatedDeal);
+    } else {
+      const calculatedDiscount = ((original - deal) / original) * 100;
+      discountInput.value = formatNumber(Math.max(0, calculatedDiscount));
     }
+  };
 
-    // Determinar qual cálculo fazer baseado no último campo modificado
-    switch (lastActiveField) {
-      case 'deal-discount':
-        // Usuário está digitando no campo de desconto
-        if (discount > 0 && discount <= 100) {
-          const calculatedDeal = original - (original * (discount / 100));
-          dealPriceInput.value = formatNumber(calculatedDeal);
-          discountInput.value = formatNumber(discount);
-        } else if (discount > 100) {
-          discountInput.value = '100,00';
-          const calculatedDeal = original - (original * (100 / 100));
-          dealPriceInput.value = formatNumber(calculatedDeal);
-        } else if (discount === 0) {
-          discountInput.value = '0,00';
-          dealPriceInput.value = formatNumber(original);
-        }
-        break;
-
-      case 'deal-price':
-        // Usuário está digitando no campo de preço com desconto
-        if (deal > 0) {
-          if (deal < original) {
-            const calculatedDiscount = ((original - deal) / original) * 100;
-            discountInput.value = formatNumber(calculatedDiscount);
-          } else {
-            discountInput.value = '0,00';
-            dealPriceInput.value = formatNumber(original);
-          }
-        }
-        break;
-
-      case 'deal-original-price':
-      default:
-        // Se usuário mudou o preço original, recalcular baseado no que faz sentido
-        if (discount > 0) {
-          // Se já tem desconto, recalcular preço com desconto
-          const validDiscount = Math.min(discount, 100);
-          const calculatedDeal = original - (original * (validDiscount / 100));
-          dealPriceInput.value = formatNumber(calculatedDeal);
-          discountInput.value = formatNumber(validDiscount);
-        } else if (deal > 0) {
-          // Se já tem preço com desconto, recalcular desconto
-          if (deal < original) {
-            const calculatedDiscount = ((original - deal) / original) * 100;
-            discountInput.value = formatNumber(calculatedDiscount);
-          } else {
-            discountInput.value = '0,00';
-            dealPriceInput.value = formatNumber(original);
-          }
-        }
-        break;
-    }
-  }
-
-  // Adicionar listeners com debounce mais curto para melhor resposta
+  // Adiciona os eventos corretamente dentro do escopo onde as variáveis existem
   [originalPriceInput, dealPriceInput, discountInput].forEach(input => {
-    eventListenersManager.add(
-      input,
-      'input',
-      debounce(calculate, 150)
-    );
+    input.addEventListener('focus', () => { lastActiveField = input.id; });
+    input.addEventListener('input', calculate);
   });
-
-  // Calcular inicialmente se já houver valores
-  setTimeout(calculate, 500);
 }
 
 function setupDealFormWithMerchantData() {

@@ -637,15 +637,45 @@
             </div>
 
             <!-- Botões de Ação -->
-            <div class="form-actions">
+            <div
+              class="form-actions"
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr 2fr;
+                gap: 12px;
+                margin-top: 25px;
+              "
+            >
               <button
                 type="button"
                 class="btn-secondary"
-                onclick="showView('deals')"
+                onclick="resetDealForm()"
+                style="width: 100%; border: 1px solid #475569"
               >
-                Cancelar
+                ✖️ Cancelar
               </button>
-              <button type="submit" class="btn-primary">Publicar Oferta</button>
+
+              <button
+                type="button"
+                class="btn-info"
+                onclick="openDealPreview()"
+                style="
+                  width: 100%;
+                  background-color: #0284c7;
+                  color: white;
+                  border: none;
+                "
+              >
+                👁️ Visualizar
+              </button>
+
+              <button
+                type="submit"
+                class="btn-primary"
+                style="width: 100%; font-weight: bold"
+              >
+                🚀 Publicar Oferta
+              </button>
             </div>
           </form>
         </div>
@@ -998,6 +1028,19 @@
           </form>
         </div>
       </main>
+    </div>
+
+    <div id="preview-modal" class="modal hidden">
+      <div class="modal-content preview-content">
+        <span class="close-modal" onclick="closePreview()">&times;</span>
+        <h3>👀 Pré-visualização da Oferta</h3>
+        <div id="preview-card-container"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closePreview()">
+            Voltar e Ajustar
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Scripts -->

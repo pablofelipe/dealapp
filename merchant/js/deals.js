@@ -356,7 +356,7 @@ async function createDeal() {
     let imageUrl = await getDealImage();
 
     if (!imageUrl) {
-      imageUrl = 'https://dummyimage.com/500x300/cccccc/666666.png&text=Imagem+Indispon%C3%ADvel';
+      imageUrl = '/public/assets/img-ind.png';
     }
 
     // 7. Usar localização do merchant
@@ -427,7 +427,8 @@ async function createDeal() {
     showNotification('success', '🎉 Oferta criada com sucesso!');
 
     // 11. Limpar formulário
-    resetDealForm();
+    window.closePreview();
+    window.resetDealForm();
 
     // 12. Voltar para lista e recarregar
     showView('deals');
@@ -475,7 +476,7 @@ async function getDealImage() {
   }
 
   console.log('📷 Nenhuma imagem fornecida, usando imagem padrão');
-  return 'https://dummyimage.com/500x300/cccccc/666666.png&text=Imagem+Indispon%C3%ADvel';
+  return '/public/assets/img-ind.png';
 }
 
 
@@ -495,6 +496,9 @@ function resetDealForm() {
     // Limpar URL da imagem
     const imageUrlInput = document.getElementById('deal-image-url');
     if (imageUrlInput) imageUrlInput.value = '';
+
+    const previewContainer = document.getElementById('preview-card-container');
+    if (previewContainer) previewContainer.innerHTML = "";
 
   } catch (error) {
     console.warn('⚠️ Não foi possível limpar o formulário:', error.message);
@@ -526,7 +530,7 @@ async function uploadImageToStorage(file, merchantId) {
       reader.onload = (e) => {
         console.log('✅ Imagem convertida para base64');
 
-        // Em produção, você faria:
+        // Em produção:
         // 1. Fazer upload para Firebase Storage
         // 2. Obter URL de download
         // 3. Retornar URL real
@@ -585,6 +589,94 @@ function showNotification(type, message) {
     setTimeout(() => notification.remove(), 300);
   }, 5000);
 }
+
+window.resetDealForm = function () {
+  if (confirm('Deseja descartar as alterações desta oferta?')) {
+    const form = document.getElementById('deal-form');
+    if (form) form.reset();
+
+    // Limpa o badge de desconto (se for span ou input)
+    const discountField = document.getElementById('deal-discount');
+    if (discountField) {
+      discountField.value = '';
+      discountField.textContent = '0%';
+    }
+
+    showView('deals'); // Volta para a lista de ofertas
+  }
+};
+
+let isPreviewLoading = false;
+
+window.openDealPreview = function () {
+  if (isPreviewLoading) return;
+  isPreviewLoading = true;
+
+  try {
+    console.log('🔍 Iniciando Preview Seguro...');
+
+    const title = document.getElementById('deal-title').value || 'Título da Oferta';
+    const description = document.getElementById('deal-description').value || 'Descrição da oferta...';
+    const priceOld = parseFloat(document.getElementById('deal-original-price').value) || 0;
+    const priceNew = parseFloat(document.getElementById('deal-price').value) || 0;
+    // Dentro de openDealPreview no deals.js
+    const discountVal = document.getElementById('deal-discount').value || '0';
+    const discountDisplay = discountVal.includes('%') ? discountVal : `${parseFloat(discountVal).toFixed(0)}%`;
+
+    const imgUrl = document.getElementById('deal-image-url').value.trim();
+
+    // 2. Imagem de segurança (Indisponivel)
+    const finalImg = imgUrl ? imgUrl : '/public/assets/img-ind.png';
+
+    const previewContainer = document.getElementById('preview-card-container');
+
+    // 3. HTML com o Estilo do deals_public.js (Injetando CSS direto para evitar conflito)
+    previewContainer.innerHTML = `
+        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; font-family: 'Inter', sans-serif;">
+            <div style="background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 340px; margin: 0 auto;">
+                
+                <div style="position: relative; height: 180px; background: #eee;">
+                    <img src="${finalImg}" style="width: 100%; height: 100%; object-fit: cover;" 
+                         onerror="this.onerror=null; this.src='/public/assets/icons/icon-192.png';">
+                    <div style="position: absolute; top: 12px; right: 12px; background: #ff5722; color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                        ${discountDisplay}
+                    </div>
+                </div>
+
+                <div style="padding: 16px; text-align: left;">
+                    <div style="display: flex; align-items: center; gap: 5px; color: #2196F3; font-weight: bold; font-size: 12px; margin-bottom: 8px;">
+                        <span>🏢</span> ${window.currentMerchant?.tradingName || 'Sua Loja'}
+                    </div>
+                    
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #1e293b;">${title}</h3>
+                    <p style="font-size: 14px; color: #64748b; line-height: 1.4; margin-bottom: 16px;">${description}</p>
+
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="text-decoration: line-through; color: #94a3b8; font-size: 14px;">De R$ ${priceOld.toFixed(2)}</span>
+                        <span style="font-size: 24px; font-weight: bold; color: #2196F3;">Por R$ ${priceNew.toFixed(2)}</span>
+                    </div>
+
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b;">
+                        <p style="margin-bottom: 4px;">🕒 <strong>Horário:</strong> ${window.currentMerchant?.businessHours || 'Não informado'}</p>
+                        <p>📍 <strong>Local:</strong> ${window.currentMerchant?.location?.address || 'Endereço cadastrado'}, ${window.currentMerchant?.location?.number || ''}</p>
+                    </div>
+                </div>
+            </div>
+            <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 15px;">Visualização modo cliente</p>
+        </div>
+    `;
+
+    // 4. Abrir Modal
+    const modal = document.getElementById('preview-modal');
+    if (modal) modal.classList.remove('hidden');
+
+  } catch (error) {
+    console.error('❌ Erro ao gerar preview:', error);
+  } finally {
+    // Libera para o próximo clique
+    isPreviewLoading = false;
+  }
+};
 
 // ========== CONECTA EVENTO DE SUBMIT ==========
 
@@ -722,5 +814,31 @@ window.deleteDeal = async function (dealId, dealTitle) {
   } catch (error) {
     console.error('❌ Erro:', error);
     alert('❌ Erro ao deletar');
+  }
+};
+
+// 1. Função para Fechar o Modal (Visualização)
+window.closePreview = function () {
+  const modal = document.getElementById('preview-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    console.log('🙈 Preview fechado');
+  }
+};
+
+// 2. Função para Cancelar/Resetar
+window.resetDealForm = function () {
+  // Primeiro fecha a visualização se estiver aberta
+  window.closePreview();
+
+  const form = document.getElementById('deal-form');
+  if (form) {
+    form.reset();
+    // Força a limpeza do campo de desconto
+    const discountInput = document.getElementById('deal-discount');
+    if (discountInput) discountInput.value = '';
+
+    console.log('🧹 Formulário resetado');
+    showView('deals'); // Volta para a listagem
   }
 };
