@@ -41,6 +41,15 @@ function initializeApp() {
   initializeEditMerchant();
   initializeBadgeOnLoad();
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('ref');
+  if (code) {
+    const vendorInput = document.getElementById('vendorCode');
+    if (vendorInput) {
+      vendorInput.value = code.toUpperCase();
+    }
+  }
+
   console.log('✅ App inicializado com sucesso');
 }
 
