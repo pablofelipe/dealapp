@@ -1,8 +1,8 @@
 import { observeAuthState, loginWithGoogle, logout } from './auth.js';
 import { loadNearbyDeals } from './deals.js';
 import { loadMyCoupons } from './coupons.js';
-import { db } from './firebase-config.js';
-import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { auth, db } from './firebase-config.js';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Elementos DOM
 const loading = document.getElementById('loading');
@@ -76,24 +76,32 @@ function renderCategoryInterests() {
 }
 
 // 3. Função para ativar/desativar um interesse
-window.toggleInterest = function (categoryId) {
+window.toggleInterest = async function (categoryId) {
   let savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
 
   if (savedInterests.includes(categoryId)) {
-    // Remove se já existia
     savedInterests = savedInterests.filter(id => id !== categoryId);
   } else {
-    // Adiciona se não existia
     savedInterests.push(categoryId);
   }
 
-  // Guarda no localStorage
+  // 1. Mantém o salvamento local para velocidade (UI instantânea)
   localStorage.setItem('userInterests', JSON.stringify(savedInterests));
-
-  // Atualiza o visual
   renderCategoryInterests();
 
-  // DICA: Aqui no futuro poderemos avisar o Firestore que o usuário mudou os interesses
+  const user = auth.currentUser; // Pega o usuário logado
+  if (user) {
+    try {
+      const userRef = doc(db, "users", user.uid); // Referência ao doc do usuário
+      await updateDoc(userRef, {
+        interests: savedInterests,
+        lastUpdate: serverTimestamp() // Importante para sabermos quando ele mudou
+      });
+      console.log("Interesses atualizados no Firestore!");
+    } catch (error) {
+      console.error("Erro ao salvar no Firestore:", error);
+    }
+  }
 };
 
 function setupRadiusSlider() {
@@ -131,6 +139,17 @@ function setupRadiusSlider() {
     if (km === 5) label += " (recomendado)";
     if (km === 20) label += " (máximo)";
     display.textContent = label;
+  }
+}
+
+async function syncInterests() {
+  const user = auth.currentUser;
+  if (user) {
+    const userSnap = await getDoc(doc(db, "users", user.uid));
+    if (userSnap.exists() && userSnap.data().interests) {
+      localStorage.setItem('userInterests', JSON.stringify(userSnap.data().interests));
+      renderCategoryInterests();
+    }
   }
 }
 
@@ -319,6 +338,7 @@ function switchTab(tab) {
 
     renderCategoryInterests();
     setupRadiusSlider();
+    syncInterests();
   }
 }
 
