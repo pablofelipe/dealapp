@@ -88,8 +88,6 @@ export async function loadNearbyDeals() {
   }
 }
 
-function showLoading(loading) { }
-
 // Helper: Promessa de Localização com Timeout
 function getCurrentLocation(timeout) {
   return new Promise((resolve, reject) => {
@@ -120,22 +118,53 @@ export function renderDeals(deals) {
   const dealsList = document.getElementById('deals-list');
   if (!dealsList) return;
 
-  // Proteção contra undefined ou null
+  // Verifica se o usuário tem filtros de categoria ativos
+  const savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+  const hasFilters = savedInterests.length > 0;
+
+  // Proteção contra undefined ou lista vazia
   if (!deals || !Array.isArray(deals) || deals.length === 0) {
+
+    // Mensagem personalizada dependendo do cenário
+    let title = "Nada no Radar... ainda!";
+    let message = "Ainda não encontramos ofertas nesta região.";
+    let actionButton = '';
+
+    if (hasFilters) {
+      message = "Não encontramos ofertas nessas categorias. Que tal expandir sua busca?";
+      actionButton = `<button onclick="window.clearFilters()" class="btn-outline">🧹 Limpar Filtros</button>`;
+    } else {
+      message = "Seja o primeiro a movimentar seu bairro! Indique sua loja favorita.";
+      // Esse link abre o WhatsApp para o usuário mandar para o lojista ou para você
+      actionButton = `<a href="https://wa.me/?text=Oi!%20Conheci%20o%20Radar%20da%20Oferta%20e%20queria%20ver%20sua%20loja%20lá.%20Cadastra%20aí:%20radardaoferta.com.br" target="_blank" class="btn-primary-small">📢 Indicar Comércio</a>`;
+    }
+
     dealsList.innerHTML = `
       <div class="empty-state">
-        <p>📍 Nenhuma oferta encontrada nesta região.</p>
-        <button onclick="location.reload()" class="btn-primary">Tentar Novamente</button>
+        <div class="empty-icon">📡</div>
+        <h3>${title}</h3>
+        <p>${message}</p>
+        <div class="empty-actions">
+            ${actionButton}
+            <button onclick="location.reload()" class="btn-text">🔄 Tentar atualizar</button>
+        </div>
       </div>`;
     return;
   }
 
+  // Se tiver ofertas, renderiza normalmente
+  dealsList.innerHTML = ''; // Limpa antes de adicionar
   deals.forEach(deal => {
     const dealCard = createDealCard(deal);
     dealsList.appendChild(dealCard);
   });
 }
 
+// Pequena função auxiliar para o botão de limpar filtros funcionar
+window.clearFilters = function () {
+  localStorage.removeItem('userInterests');
+  location.reload(); // Recarrega a página limpa
+}
 /**
  * Criar card de oferta
  */

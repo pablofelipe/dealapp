@@ -1026,10 +1026,52 @@ body {
 }
 
 /* Empty State */
+/* Centraliza o card de aviso */
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 60px 20px;
+  padding: 40px 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin: 20px;
+}
+
+/* Estilo do botão Limpar Filtros */
+.btn-outline {
+  background: transparent;
+  border: 2px solid #2196f3; /* Cor primária do seu projeto [cite: 8] */
+  color: #2196f3;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover {
+  background: #2196f3;
+  color: white;
+}
+
+/* Link de tentar atualizar */
+.btn-text {
+  background: none;
+  border: none;
   color: #64748b;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Espaçamento dos ícones */
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 10px;
 }
 
 .empty-state .btn-primary {
