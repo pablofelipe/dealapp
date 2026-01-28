@@ -3,6 +3,8 @@ import { loadNearbyDeals } from './deals.js';
 import { loadMyCoupons } from './coupons.js';
 import { auth, db } from './firebase-config.js';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
 const DEFAULT_CATEGORIES = ['bakery', 'fruit-veg', 'pizzeria', 'restaurant', 'supermarket'];
 
@@ -108,6 +110,11 @@ window.toggleInterest = async function (categoryId) {
         lastUpdate: serverTimestamp() // Importante para sabermos quando ele mudou
       });
       console.log("Interesses atualizados no Firestore!");
+
+      const isAdding = !savedInterests.includes(categoryId);
+
+      await syncTopicSubscription(categoryId, isAdding);
+
     } catch (error) {
       console.error("Erro ao salvar no Firestore:", error);
     }
@@ -180,6 +187,7 @@ async function handleAuthStateChange(user) {
     showApp(user);
     await requestLocationAndLoadDeals();
     await loadMyCoupons();
+    updateNotificationSubscriptions();
   } else {
     showLogin();
   }
@@ -358,6 +366,47 @@ function switchTab(tab) {
     renderCategoryInterests();
     setupRadiusSlider();
     syncInterests();
+  }
+}
+
+async function updateNotificationSubscriptions(interests) {
+  const messaging = getMessaging();
+  try {
+    const currentToken = await getToken(messaging, { vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ' });
+
+    if (currentToken) {
+      // Aqui você enviaria o token e a lista de interesses para uma Cloud Function
+      // que faz o subscribe/unsubscribe nos tópicos.
+      console.log('🎫 Token FCM atualizado para tópicos:', interests);
+
+      // Salva o token no documento do usuário no Firestore para envio segmentado
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      await updateDoc(userRef, { fcmToken: currentToken });
+    }
+  } catch (err) {
+    console.error('❌ Erro ao gerenciar notificações:', err);
+  }
+}
+
+async function syncTopicSubscription(categoryId, isSubscribed) {
+  try {
+    const messaging = getMessaging();
+    const token = await getToken(messaging, { vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ' });
+
+    if (!token) return;
+
+    const functions = getFunctions();
+    const manageSub = httpsCallable(functions, 'manageSubscription');
+
+    await manageSub({
+      token: token,
+      topic: categoryId,
+      action: isSubscribed ? 'subscribe' : 'unsubscribe'
+    });
+
+    console.log(`📡 Notificações para ${categoryId}: ${isSubscribed ? 'Ativadas' : 'Desativadas'}`);
+  } catch (error) {
+    console.error("Erro ao sincronizar tópico:", error);
   }
 }
 
