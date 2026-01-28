@@ -34,8 +34,15 @@ const TIMEOUT_GPS = 5000; // 5 segundos para desistir do GPS
 
 export async function loadNearbyDeals() {
   console.log('🚀 Iniciando loadNearbyDeals com filtros do usuário');
-  const userInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
   const maxRadius = getPreferredRadius();
+  let userInterests = localStorage.getItem('userInterests');
+
+  if (!userInterests) {
+    userInterests = ['bakery', 'fruit-veg', 'pizzeria', 'restaurant', 'supermarket'];
+    localStorage.setItem('userInterests', JSON.stringify(userInterests));
+  } else {
+    userInterests = JSON.parse(userInterests);
+  }
 
   // Limpa a lista atual para evitar duplicatas ao trocar de aba
   const dealsList = document.getElementById('deals-list');

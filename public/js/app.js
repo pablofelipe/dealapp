@@ -4,6 +4,8 @@ import { loadMyCoupons } from './coupons.js';
 import { auth, db } from './firebase-config.js';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
+const DEFAULT_CATEGORIES = ['bakery', 'fruit-veg', 'pizzeria', 'restaurant', 'supermarket'];
+
 // Elementos DOM
 const loading = document.getElementById('loading');
 const loginScreen = document.getElementById('login-screen');
@@ -64,7 +66,15 @@ function renderCategoryInterests() {
   if (!container) return;
 
   // Recupera as preferências já salvas (ou um array vazio)
-  const savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+  let userInterests = localStorage.getItem('userInterests');
+
+  let savedInterests = DEFAULT_CATEGORIES
+  if (!userInterests) {
+    localStorage.setItem('userInterests', JSON.stringify(savedInterests));
+    console.log("✨ Perfil inicial padrão aplicado.");
+  } else {
+    savedInterests = JSON.parse(userInterests);
+  }
 
   container.innerHTML = CATEGORIES.map(cat => `
     <div class="category-pill ${savedInterests.includes(cat.id) ? 'active' : ''}" 
@@ -145,11 +155,20 @@ function setupRadiusSlider() {
 async function syncInterests() {
   const user = auth.currentUser;
   if (user) {
-    const userSnap = await getDoc(doc(db, "users", user.uid));
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
     if (userSnap.exists() && userSnap.data().interests) {
+      // Se já tem no Firestore, o Firestore manda no LocalStorage
       localStorage.setItem('userInterests', JSON.stringify(userSnap.data().interests));
-      renderCategoryInterests();
+    } else {
+      // Se não tem no Firestore, salva o perfil padrão lá agora
+      const currentLocal = JSON.parse(localStorage.getItem('userInterests') || '[]');
+      if (currentLocal.length > 0) {
+        await updateDoc(userRef, { interests: currentLocal }, { merge: true });
+      }
     }
+    renderCategoryInterests();
   }
 }
 
