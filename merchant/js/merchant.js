@@ -65,6 +65,7 @@ export async function saveMerchantProfile(uid, userEmail, profileData) {
             tradingName: profileData.tradingName.trim(),
             category: profileData.category,
             phone: profileData.phone.replace(/\D/g, ''),
+            businessHours: profileData.businessHours,
 
             // Localização com coordenadas
             location: {

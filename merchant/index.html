@@ -323,6 +323,17 @@
           </div>
 
           <div class="form-group">
+            <label for="businessHours">Horário de Funcionamento *</label>
+            <input
+              type="text"
+              id="businessHours"
+              name="businessHours"
+              required
+              placeholder="Ex: Seg a Sex 08h-18h, Sáb 08h-12h"
+            />
+          </div>
+
+          <div class="form-group">
             <label for="vendorCode">Código de Indicação</label>
             <input
               type="text"
@@ -939,6 +950,36 @@
                   placeholder="(11) 98888-8888"
                 />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label>Horário de Funcionamento *</label>
+              <input
+                type="text"
+                id="edit-merchant-hours"
+                required
+                placeholder="Ex: Seg a Sex 08h-18h, Sáb 08h-12h"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-vendorCode"
+                >Código de Indicação (Vendedor)</label
+              >
+              <input
+                type="text"
+                id="edit-vendorCode"
+                readonly
+                class="readonly-field"
+                style="
+                  background-color: #334155;
+                  color: #94a3b8;
+                  cursor: not-allowed;
+                "
+              />
+              <small style="color: var(--text-secondary)"
+                >Este código é fixo e vinculado ao seu cadastro.</small
+              >
             </div>
 
             <!-- Botões -->

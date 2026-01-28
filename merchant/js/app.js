@@ -291,6 +291,7 @@ async function handleRegisterSubmit() {
       tradingName: document.getElementById('merchant-trading-name').value,
       category: document.getElementById('merchant-category').value,
       phone: document.getElementById('merchant-phone').value,
+      businessHours: document.getElementById('businessHours').value || '',
 
       location: {
         cep: document.getElementById('merchant-cep').value,

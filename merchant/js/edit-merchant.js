@@ -107,6 +107,16 @@ function populateEditForm(merchant) {
     document.getElementById('edit-merchant-responsible-email').value = contact.responsibleEmail || '';
     document.getElementById('edit-merchant-responsible-phone').value = formatPhone(contact.responsiblePhone || '');
 
+    const vendorInput = document.getElementById('edit-vendorCode');
+    if (vendorInput) {
+        vendorInput.value = merchant.vendorCode || 'Nenhum (Direto)';
+    }
+
+    const hoursInput = document.getElementById('edit-merchant-hours');
+    if (hoursInput) {
+        hoursInput.value = merchant.businessHours || '';
+    }
+
     // Salvar dados originais para comparação
     saveOriginalData(merchant);
 }
@@ -396,28 +406,22 @@ function validateFormData(data) {
 function checkForChanges(newData) {
     const originalData = JSON.parse(sessionStorage.getItem('originalMerchantData') || '{}');
 
-    // Comparar campos principais
-    const fieldsToCompare = [
-        'cnpj', 'businessName', 'tradingName', 'category', 'phone',
-        'location.cep', 'location.state', 'location.city',
-        'location.neighborhood', 'location.address', 'location.number',
-        'location.complement', 'location.deliveryRadius',
-        'contact.responsibleName', 'contact.responsibleEmail',
-        'contact.responsiblePhone'
-    ];
+    // Lista de campos que NÃO devem disparar o alerta de mudança (metadados)
+    const blackList = ['updatedAt', 'lastDealDate', 'stats'];
 
-    for (const fieldPath of fieldsToCompare) {
-        const newValue = getNestedValue(newData, fieldPath);
-        const originalValue = getNestedValue(originalData, fieldPath);
+    // Função auxiliar para comparar objetos de forma profunda
+    const hasChanged = Object.keys(newData).some(key => {
+        if (blackList.includes(key)) return false;
 
-        // Limpar formatação para comparação
-        const cleanNewValue = cleanForComparison(newValue);
-        const cleanOriginalValue = cleanForComparison(originalValue);
+        const newValue = JSON.stringify(newData[key]);
+        const originalValue = JSON.stringify(originalData[key]);
 
-        if (cleanNewValue !== cleanOriginalValue) {
-            console.log(`Campo alterado: ${fieldPath}`, { original: cleanOriginalValue, new: cleanNewValue });
-            return true;
-        }
+        return newValue !== originalValue;
+    });
+
+    if (hasChanged) {
+        console.log("✅ Alteração detectada em algum campo.");
+        return true;
     }
 
     return false;

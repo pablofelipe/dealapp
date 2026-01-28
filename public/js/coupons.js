@@ -201,6 +201,11 @@ function createCouponCard(coupon) {
         <span class="merchant-name">🏢 ${deal?.merchantName || 'Loja Local'}</span>
         <h2 class="product-title">${deal?.title || 'Oferta'}</h2>
       </div>
+      ${deal?.businessHours ?
+      `<div class="coupon-info-item">
+        <span>🕒 Horário:</span>
+        <strong>${deal.businessHours}</strong>
+      </div>` : ''}
       <div class="status-badge badge-${status}">${statusLabels[status]}</div>
     </div>
 
