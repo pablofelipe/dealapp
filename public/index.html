@@ -293,22 +293,48 @@
     <script type="module" src="/public/js/coupons.js?v=1.0.0"></script>
     <script type="module" src="/public/js/app.js?v=1.0.0"></script>
 
+    <!-- ⚠️ REGISTRO CORRIGIDO DOS SERVICE WORKERS -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', async () => {
           try {
-            // 1. Registrar Service Worker PRINCIPAL (seu app)
-            const mainSW = await navigator.serviceWorker.register('/sw.js');
-            console.log('✅ SW principal registrado:', mainSW.scope);
-
-            // 2. Registrar Service Worker do Firebase
+            console.log('🚀 Iniciando registro de Service Workers...');
+            
+            // ⭐ IMPORTANTE: Desregistrar SWs antigos primeiro
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+              console.log('🗑️ Removendo SW antigo:', registration.scope);
+              await registration.unregister();
+            }
+            
+            // Aguardar um pouco
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // ⭐ 1. Registrar Firebase Messaging SW PRIMEIRO (mais importante)
             const firebaseSW = await navigator.serviceWorker.register(
               '/firebase-messaging-sw.js',
               {
                 scope: '/',
-              },
+                updateViaCache: 'none' // Sempre buscar versão mais recente
+              }
             );
             console.log('✅ Firebase SW registrado:', firebaseSW.scope);
+            
+            // Aguardar ativação
+            await navigator.serviceWorker.ready;
+            console.log('✅ Firebase SW ativo e pronto!');
+            
+            // ⭐ 2. Registrar SW Principal (cache e PWA)
+            // NOTA: Não precisa de segundo SW se o Firebase SW já trata tudo
+            // Mas se quiser cache separado, pode manter
+            /*
+            const mainSW = await navigator.serviceWorker.register('/sw.js', {
+              scope: '/app/',
+              updateViaCache: 'none'
+            });
+            console.log('✅ SW principal registrado:', mainSW.scope);
+            */
+            
           } catch (error) {
             console.error('❌ Erro ao registrar Service Worker:', error);
           }
