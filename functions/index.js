@@ -21,7 +21,31 @@ exports.onNewDealNotify = functions.firestore
                 dealId: context.params.dealId,
                 url: "https://radardaoferta.com.br/public",
             },
+            // ⭐ CONFIGURAÇÃO ESPECÍFICA PARA ANDROID
+            android: {
+                notification: {
+                    sound: "default",
+                    // channelId: "radar_ofertas_channel", // ⭐ Canal Android
+                    priority: "high",
+                    vibrateTimingsMillis: [0, 500, 250, 500],
+                    defaultLightSettings: true,
+                },
+            },
+            // Configuração para iOS
+            apns: {
+                payload: {
+                    aps: {
+                        sound: "default",
+                        badge: 1,
+                    },
+                },
+            },
             webpush: {
+                notification: {
+                    icon: "https://radardaoferta.com.br/public/assets/icons/icon-192.png",
+                    badge: "https://radardaoferta.com.br/public/assets/icons/icon-192.png",
+                    vibrate: [200, 100, 200],
+                },
                 fcm_options: {
                     link: "https://radardaoferta.com.br/public",
                 },
@@ -30,10 +54,30 @@ exports.onNewDealNotify = functions.firestore
         };
 
         try {
-            await admin.messaging().send(message);
-            console.log("✅ Notificação enviada para o tópico:", topic);
+            const topicInfo = await admin.messaging().getTopic(topic);
+            console.log(`👥 Inscritos no tópico ${topic}:`, topicInfo);
         } catch (error) {
-            console.error("❌ Erro ao enviar notificação:", error);
+            console.log(`ℹ️ Não foi possível verificar tópico ${topic}:`, error.message);
+        }
+
+        try {
+            const response = await admin.messaging().send(message);
+            console.log("✅ Notificação enviada para o tópico:", topic);
+
+            // Log para debug Android
+            console.log(`📱 Config Android: channelId=${message.android.notification.channelId}`);
+            console.log(`📱 Config Web: icon=${message.webpush.notification.icon}`);
+
+            return { success: true, messageId: response };
+        } catch (error) {
+            console.error(`❌ Erro ao enviar para tópico ${topic}:`, error);
+
+            // Log específico para problemas Android
+            if (error.code === "messaging/unknown-topic") {
+                console.log(`ℹ️ Tópico ${topic} não tem inscritos no Android`);
+            }
+
+            throw error;
         }
     });
 

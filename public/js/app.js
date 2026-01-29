@@ -752,8 +752,7 @@ async function enableNotifications() {
     // Tenta registrar o SW do Firebase Messaging
     console.log('🔄 Registrando Firebase Messaging SW...');
     registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-      scope: '/firebase-cloud-messaging-push-scope/',
-      updateViaCache: 'none' // Evita cache
+      updateViaCache: 'none'
     });
 
     console.log('✅ Firebase Messaging SW registrado. Escopo:', registration.scope);
@@ -996,7 +995,6 @@ window.diagnoseServiceWorkers = async function () {
       const firebaseSW = await navigator.serviceWorker.register(
         '/firebase-messaging-sw.js',
         {
-          scope: '/firebase-cloud-messaging-push-scope/',
           updateViaCache: 'none'
         }
       );
