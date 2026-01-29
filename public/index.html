@@ -179,6 +179,12 @@
                 <span class="slider"></span>
               </label>
             </div>
+            <!-- Adicione esta linha -->
+            <div
+              id="notification-status"
+              class="notification-status"
+              style="margin-top: 8px; font-size: 0.85rem; color: #666"
+            ></div>
           </div>
 
           <div class="card profile-card">
@@ -290,10 +296,53 @@
     <!-- Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then((reg) => console.log('SW registered', reg))
-          .catch((err) => console.log('SW error', err));
+        window.addEventListener('load', async () => {
+          try {
+            // 1. Registrar Service Worker principal
+            const mainRegistration =
+              await navigator.serviceWorker.register('/sw.js');
+            console.log('✅ SW principal registrado:', mainRegistration.scope);
+
+            // 2. Aguardar o SW principal estar ativo
+            if (mainRegistration.active) {
+              console.log('SW principal já ativo');
+            } else if (mainRegistration.installing) {
+              await new Promise((resolve) => {
+                mainRegistration.installing.addEventListener(
+                  'statechange',
+                  (e) => {
+                    if (e.target.state === 'activated') {
+                      console.log('SW principal ativado');
+                      resolve();
+                    }
+                  },
+                );
+              });
+            }
+
+            // 3. Tentar registrar o SW do Firebase Messaging
+            try {
+              const messagingRegistration =
+                await navigator.serviceWorker.register(
+                  '/firebase-messaging-sw.js',
+                  {
+                    scope: '/firebase-cloud-messaging-push-scope/',
+                  },
+                );
+              console.log(
+                '✅ Firebase Messaging SW registrado:',
+                messagingRegistration.scope,
+              );
+            } catch (messagingError) {
+              console.warn(
+                '⚠️ Firebase Messaging SW não registrado (pode ser normal):',
+                messagingError.message,
+              );
+            }
+          } catch (error) {
+            console.error('❌ Erro ao registrar Service Worker:', error);
+          }
+        });
       }
     </script>
   </body>

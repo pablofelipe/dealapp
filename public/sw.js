@@ -1,6 +1,7 @@
 const CACHE_NAME = 'dealapp-v1';
 const urlsToCache = [
   '/',
+  '/index.html',
   '/css/styles.css',
   '/js/app.js',
   '/js/firebase-config.js',
@@ -15,12 +16,21 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+      .then(cache => {
+        console.log('Cache aberto');
+        return cache.addAll(urlsToCache);
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
 // Fetch - estratégia Network First, Cache Fallback
 self.addEventListener('fetch', event => {
+  // Ignorar requisições do Firebase Messaging
+  if (event.request.url.includes('firebase-cloud-messaging-push-scope')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(response => {
@@ -41,10 +51,61 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Removendo cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Handler para notificações push (opcional - complementa o firebase-messaging-sw.js)
+self.addEventListener('push', event => {
+  if (event.data) {
+    const data = event.data.json();
+    console.log('Push recebido:', data);
+
+    const options = {
+      body: data.body || 'Nova oferta disponível!',
+      icon: '/assets/icons/icon-192.png',
+      badge: '/assets/icons/icon-192.png',
+      vibrate: [200, 100, 200],
+      data: data.data || {}
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(
+        data.title || 'Radar da Oferta',
+        options
+      )
+    );
+  }
+});
+
+// Handler para cliques em notificações
+self.addEventListener('notificationclick', event => {
+  console.log('Notificação clicada:', event.notification);
+  event.notification.close();
+
+  const data = event.notification.data;
+  const urlToOpen = data.dealId ? `/deal/${data.dealId}` : '/';
+
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then(clientList => {
+      // Tentar focar em uma janela existente
+      for (const client of clientList) {
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Abrir nova janela
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
     })
   );
 });

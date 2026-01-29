@@ -90,10 +90,9 @@ function renderCategoryInterests() {
 // 3. Função para ativar/desativar um interesse
 window.toggleInterest = async function (categoryId) {
   let savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
-
-  // 1. Determine se está adicionando ANTES de alterar o array
   const isAdding = !savedInterests.includes(categoryId);
 
+  // Atualizar localmente
   if (!isAdding) {
     savedInterests = savedInterests.filter(id => id !== categoryId);
   } else {
@@ -108,17 +107,34 @@ window.toggleInterest = async function (categoryId) {
     try {
       const userRef = doc(db, "users", user.uid);
 
+      // 1. Atualizar interesses no Firestore
       await updateDoc(userRef, {
         interests: savedInterests,
         lastUpdate: serverTimestamp()
       });
 
-      console.log("Interesses atualizados no Firestore!");
+      console.log("✅ Interesses atualizados no Firestore");
 
-      await syncTopicSubscription(categoryId, isAdding);
+      // 2. Obter token FCM atual
+      const messaging = getMessaging();
+      const token = await getToken(messaging, {
+        vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ'
+      });
+
+      if (!token) {
+        console.warn("⚠️ Sem token FCM, não pode gerenciar tópicos");
+        return;
+      }
+
+      // 3. Gerenciar inscrição no tópico
+      if (isAdding) {
+        await subscribeToTopic(categoryId, token);
+      } else {
+        await unsubscribeFromTopic(categoryId, token);
+      }
 
     } catch (error) {
-      console.error("Erro ao salvar no Firestore:", error);
+      console.error("❌ Erro:", error);
     }
   }
 };
@@ -164,20 +180,121 @@ function setupRadiusSlider() {
 async function syncInterests() {
   const user = auth.currentUser;
   if (user) {
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
 
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-      if (userData.interests) {
-        localStorage.setItem('userInterests', JSON.stringify(userData.interests));
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+
+        // Sincronizar interesses
+        if (userData.interests) {
+          localStorage.setItem('userInterests', JSON.stringify(userData.interests));
+        }
+
+        // ✅ Sincronizar notificações - Firestore TEM PRIORIDADE
+        let notificationsEnabled = false;
+
+        // Primeiro tenta do Firestore
+        if (userData.notificationsEnabled !== undefined) {
+          notificationsEnabled = userData.notificationsEnabled;
+        }
+        // Se não tem no Firestore, tenta localStorage
+        else if (localStorage.getItem('notificationsEnabled')) {
+          notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+        }
+
+        // Salva em ambos para consistência
+        localStorage.setItem('notificationsEnabled', notificationsEnabled.toString());
+
+        // Atualizar o switch visualmente
+        const alertSwitch = document.getElementById('pref-notifications');
+        if (alertSwitch) {
+          alertSwitch.checked = notificationsEnabled;
+          console.log(`🔄 Switch sincronizado: ${notificationsEnabled ? 'ON' : 'OFF'}`);
+        }
+
+        // Atualizar status visual
+        updateNotificationStatus(notificationsEnabled);
+      } else {
+        // Se usuário não existe no Firestore, usa localStorage
+        const localEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+        const alertSwitch = document.getElementById('pref-notifications');
+        if (alertSwitch) {
+          alertSwitch.checked = localEnabled;
+        }
+        updateNotificationStatus(localEnabled);
       }
-      // ✅ Sincroniza o status de notificação do banco para o local
-      if (userData.notificationsEnabled !== undefined) {
-        localStorage.setItem('notificationsEnabled', userData.notificationsEnabled.toString());
+
+    } catch (error) {
+      console.error('Erro ao sincronizar interesses:', error);
+      // Fallback para localStorage
+      const localEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+      const alertSwitch = document.getElementById('pref-notifications');
+      if (alertSwitch) {
+        alertSwitch.checked = localEnabled;
       }
+      updateNotificationStatus(localEnabled);
     }
+
     renderCategoryInterests();
+  }
+}
+
+// Função para atualizar status visual
+function updateNotificationStatus(isEnabled) {
+  const statusElement = document.getElementById('notification-status');
+  if (statusElement) {
+    statusElement.textContent = isEnabled
+      ? "✅ Notificações ativas - Você receberá alertas das categorias selecionadas"
+      : "🔕 Notificações desativadas";
+    statusElement.style.color = isEnabled ? '#10b981' : '#ef4444';
+    statusElement.style.fontSize = '0.85rem';
+    statusElement.style.marginTop = '8px';
+  }
+
+  // Também pode adicionar um toast/confirmação
+  showNotificationToast(isEnabled);
+}
+
+function showNotificationToast(isEnabled) {
+  // Cria um toast temporário
+  const toast = document.createElement('div');
+  toast.textContent = `Notificações ${isEnabled ? 'ativadas' : 'desativadas'}`;
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${isEnabled ? '#10b981' : '#ef4444'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+  `;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+
+  // Adicionar CSS para animações se não existir
+  if (!document.querySelector('#toast-styles')) {
+    const style = document.createElement('style');
+    style.id = 'toast-styles';
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
   }
 }
 
@@ -189,9 +306,87 @@ async function handleAuthStateChange(user) {
     showApp(user);
     await requestLocationAndLoadDeals();
     await loadMyCoupons();
-    updateNotificationSubscriptions();
+
+    // ✅ INICIALIZAÇÃO AUTOMÁTICA DAS NOTIFICAÇÕES
+    await initializeUserNotifications(user);
+
   } else {
     showLogin();
+  }
+}
+
+/**
+ * Inicializa notificações ao fazer login
+ */
+async function initializeUserNotifications(user) {
+  try {
+    console.log('🔔 Inicializando notificações para:', user.uid);
+
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const notificationsEnabled = userData.notificationsEnabled || false;
+
+      // Sincronizar localStorage
+      localStorage.setItem('notificationsEnabled', notificationsEnabled.toString());
+
+      // Se notificações estão ativas mas não tem token válido
+      if (notificationsEnabled) {
+        console.log('🔄 Notificações ativas, verificando token...');
+
+        // Verificar se tem token válido
+        if (!userData.fcmToken) {
+          console.log('⚠️ Notificações ativas mas sem token. Tentando gerar...');
+          await manageNotifications(true);
+        } else {
+          console.log('✅ Token FCM já existe:', userData.fcmToken.substring(0, 20) + '...');
+
+          // Verificar se está inscrito nos tópicos atuais
+          const interests = userData.interests || JSON.parse(localStorage.getItem('userInterests') || '[]');
+          console.log(`📊 Interesses: ${interests.length} categorias`);
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao inicializar notificações:', error);
+  }
+}
+
+
+async function initializeNotificationState(user) {
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+
+      // Prioridade: Firestore > localStorage > padrão (false)
+      let isEnabled = false;
+
+      if (userData.notificationsEnabled !== undefined) {
+        isEnabled = userData.notificationsEnabled;
+      } else if (localStorage.getItem('notificationsEnabled')) {
+        isEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+      }
+
+      // Garantir que está salvo em ambos
+      localStorage.setItem('notificationsEnabled', isEnabled.toString());
+
+      // Atualizar visualmente se estiver na tela de perfil
+      const alertSwitch = document.getElementById('pref-notifications');
+      if (alertSwitch) {
+        alertSwitch.checked = isEnabled;
+        updateNotificationStatus(isEnabled);
+      }
+
+      console.log(`🔔 Estado inicial: ${isEnabled ? 'ON' : 'OFF'}`);
+    }
+  } catch (error) {
+    console.error('Erro ao inicializar notificações:', error);
   }
 }
 
@@ -345,6 +540,9 @@ function handleLocationError(error) {
 /**
  * Trocar entre abas
  */
+/**
+ * Trocar entre abas
+ */
 function switchTab(tab) {
   navItems.forEach(item => item.classList.remove('active'));
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
@@ -369,30 +567,320 @@ function switchTab(tab) {
     setupRadiusSlider();
     syncInterests();
 
-    // --- VÍNCULO DO SWITCH DE ALERTAS ---
+    // --- VÍNCULO DO SWITCH DE ALERTAS CORRIGIDO ---
     const alertSwitch = document.getElementById('pref-notifications');
     if (alertSwitch && auth.currentUser) {
-      // Tenta ler do localStorage primeiro para ser rápido, depois validamos com o banco
+      // Remover listeners anteriores para evitar duplicação
+      alertSwitch.onchange = null;
+
+      // Buscar estado atual do banco
       const userRef = doc(db, "users", auth.currentUser.uid);
       getDoc(userRef).then((docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Seta o switch baseado no campo do banco (default false se não existir)
-          alertSwitch.checked = data.notificationsEnabled || false;
+          const isEnabled = data.notificationsEnabled || false;
+
+          // Sincronizar switch com banco de dados
+          alertSwitch.checked = isEnabled;
+
+          // Sincronizar localStorage também
+          localStorage.setItem('notificationsEnabled', isEnabled.toString());
         }
+      }).catch(err => {
+        console.error("Erro ao buscar preferências:", err);
       });
 
+      // No switchTab() função, substitua o alertSwitch.onchange:
       alertSwitch.onchange = async (e) => {
         const isChecked = e.target.checked;
-        if (isChecked) {
-          await enableNotifications();
-        } else {
-          // Desativa direto no banco
-          const userRef = doc(db, "users", auth.currentUser.uid);
-          await updateDoc(userRef, { notificationsEnabled: false });
+
+        // Feedback visual imediato
+        alertSwitch.checked = isChecked;
+
+        // Gerenciar notificações
+        const success = await manageNotifications(isChecked);
+
+        if (!success) {
+          // Reverter visualmente se falhou
+          alertSwitch.checked = !isChecked;
+          alert('Não foi possível alterar as notificações. Tente novamente.');
         }
+
+        // Atualizar status visual
+        updateNotificationStatus(isChecked);
       };
     }
+  }
+}
+
+/**
+ * Gerencia notificações de forma robusta
+ * @param {boolean} shouldEnable - true para ativar, false para desativar
+ */
+async function manageNotifications(shouldEnable) {
+  const user = auth.currentUser;
+  if (!user) {
+    console.warn('❌ Usuário não autenticado');
+    return false;
+  }
+
+  const userRef = doc(db, "users", user.uid);
+
+  try {
+    if (shouldEnable) {
+      console.log('🔄 Ativando notificações...');
+
+      // 1. Tentar ativar notificações FCM
+      const token = await enableNotifications();
+
+      if (token) {
+        // 2. Se sucesso, salvar estado
+        await updateDoc(userRef, {
+          notificationsEnabled: true,
+          fcmToken: token,
+          lastTokenUpdate: serverTimestamp()
+        }, { merge: true });
+
+        localStorage.setItem('notificationsEnabled', 'true');
+        console.log('✅ Notificações ativadas com sucesso');
+
+        // 3. Inscrever nos tópicos atuais
+        await subscribeToCurrentInterests(token);
+
+        return true;
+      } else {
+        // 3. Se falhou, manter desativado
+        console.warn('⚠️ Falha ao ativar notificações FCM');
+        return false;
+      }
+
+    } else {
+      // DESATIVAR
+      console.log('🔕 Desativando notificações...');
+
+      // 1. Obter token atual para desinscrever de tópicos
+      const userSnap = await getDoc(userRef);
+      const currentToken = userSnap.exists() ? userSnap.data().fcmToken : null;
+
+      if (currentToken) {
+        // Desinscrever de todos os tópicos
+        await unsubscribeFromAllTopics(currentToken);
+      }
+
+      // 2. Atualizar estado
+      await updateDoc(userRef, {
+        notificationsEnabled: false,
+        fcmToken: null
+      }, { merge: true });
+
+      localStorage.setItem('notificationsEnabled', 'false');
+      console.log('✅ Notificações desativadas');
+
+      return true;
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao gerenciar notificações:', error);
+
+    // Em caso de erro, garantir estado consistente
+    if (shouldEnable) {
+      // Se estava tentando ativar e falhou, manter desativado
+      await updateDoc(userRef, {
+        notificationsEnabled: false
+      }, { merge: true });
+
+      localStorage.setItem('notificationsEnabled', 'false');
+    }
+
+    return false;
+  }
+}
+
+// Inscrever em todos os interesses atuais
+async function subscribeToCurrentInterests(token) {
+  const interests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+  console.log(`📡 Inscrevendo em ${interests.length} tópicos...`);
+
+  for (const topic of interests) {
+    try {
+      await subscribeToTopic(topic, token);
+    } catch (error) {
+      console.warn(`⚠️ Não pôde inscrever em ${topic}:`, error.message);
+    }
+  }
+}
+
+// Desinscrever de todos os tópicos
+async function unsubscribeFromAllTopics(token) {
+  const interests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+  console.log(`📡 Desinscrevendo de ${interests.length} tópicos...`);
+
+  for (const topic of interests) {
+    try {
+      await unsubscribeFromTopic(topic, token);
+    } catch (error) {
+      // Ignora erros ao desinscrever
+    }
+  }
+}
+
+async function enableNotifications() {
+  console.log('🔐 Iniciando ativação de notificações...');
+
+  // 1. Verificar permissão
+  if (Notification.permission === 'denied') {
+    throw new Error('Permissão negada anteriormente. Vá nas configurações do navegador.');
+  }
+
+  if (Notification.permission === 'default') {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      throw new Error('Permissão negada pelo usuário');
+    }
+  }
+
+  console.log('✅ Permissão concedida');
+
+  // 2. Garantir que temos um Service Worker ativo
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service Worker não suportado');
+  }
+
+  let registration;
+
+  try {
+    // Tenta registrar o SW do Firebase Messaging
+    console.log('🔄 Registrando Firebase Messaging SW...');
+    registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+      scope: '/firebase-cloud-messaging-push-scope/',
+      updateViaCache: 'none' // Evita cache
+    });
+
+    console.log('✅ Firebase Messaging SW registrado. Escopo:', registration.scope);
+
+    // Aguardar ativação
+    if (registration.installing) {
+      console.log('⏳ Aguardando ativação do SW...');
+      await new Promise((resolve) => {
+        registration.installing.addEventListener('statechange', (e) => {
+          if (e.target.state === 'activated') {
+            console.log('✅ SW ativado!');
+            resolve();
+          }
+        });
+      });
+    } else if (registration.active) {
+      console.log('✅ SW já está ativo');
+    }
+
+  } catch (swError) {
+    console.warn('⚠️ Erro ao registrar Firebase SW:', swError.message);
+
+    // Fallback: usar SW principal
+    console.log('🔄 Usando SW principal como fallback...');
+    try {
+      registration = await navigator.serviceWorker.ready;
+      console.log('✅ SW principal pronto');
+    } catch (readyError) {
+      console.error('❌ Nenhum SW disponível:', readyError.message);
+      throw new Error('Service Worker não disponível');
+    }
+  }
+
+  // 3. Obter token FCM com o SW ativo
+  const messaging = getMessaging();
+  let token;
+
+  try {
+    const options = {
+      vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ'
+    };
+
+    // Se temos um registration, usar
+    if (registration) {
+      options.serviceWorkerRegistration = registration;
+    }
+
+    console.log('🔑 Solicitando token FCM...');
+    token = await getToken(messaging, options);
+
+    if (!token) {
+      throw new Error('Token não foi gerado');
+    }
+
+    console.log('✅ Token FCM gerado com sucesso');
+    console.log('📱 Token:', token.substring(0, 30) + '...');
+
+  } catch (error) {
+    console.error('❌ Erro ao obter token FCM:', error.message);
+
+    // Se é erro de SW inativo, tentar método mais simples
+    if (error.message.includes('no active Service Worker') ||
+      error.code === 'messaging/invalid-sw-registration') {
+
+      console.log('🔄 Tentando método simplificado...');
+
+      try {
+        // Tentar sem especificar SW
+        token = await getToken(messaging, {
+          vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ'
+        });
+
+        if (token) {
+          console.log('✅ Token obtido com método simplificado');
+        } else {
+          throw new Error('Token não gerado');
+        }
+
+      } catch (simpleError) {
+        console.error('❌ Método simplificado também falhou:', simpleError.message);
+        throw new Error('Não foi possível configurar notificações push');
+      }
+    } else {
+      throw new Error('Falha na configuração de notificações');
+    }
+  }
+
+  return token;
+}
+
+// Nova função simplificada para inscrever em tópicos
+async function subscribeToTopic(topic, token) {
+  try {
+    const functions = getFunctions();
+    const manageSub = httpsCallable(functions, 'manageSubscription');
+
+    await manageSub({
+      token: token,
+      topic: topic,
+      action: 'subscribe'
+    });
+
+    console.log(`✅ Inscrito no tópico: ${topic}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Falha ao inscrever em ${topic}:`, error.message);
+    return false;
+  }
+}
+
+// Função para desinscrever
+async function unsubscribeFromTopic(topic, token) {
+  try {
+    const functions = getFunctions();
+    const manageSub = httpsCallable(functions, 'manageSubscription');
+
+    await manageSub({
+      token: token,
+      topic: topic,
+      action: 'unsubscribe'
+    });
+
+    console.log(`✅ Desinscrito do tópico: ${topic}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Falha ao desinscrever de ${topic}:`, error.message);
+    return false;
   }
 }
 
@@ -417,11 +905,48 @@ async function updateNotificationSubscriptions(interests) {
 
 async function syncTopicSubscription(categoryId, isSubscribed) {
   try {
-    const messaging = getMessaging();
-    const token = await getToken(messaging, { vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ' });
+    // 1. Verificar se o usuário tem notificações ativas
+    const user = auth.currentUser;
+    if (!user) return;
 
-    if (!token) return;
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
 
+    let notificationsEnabled = false;
+    if (userSnap.exists()) {
+      notificationsEnabled = userSnap.data().notificationsEnabled || false;
+    }
+
+    // 2. Se notificações estão desativadas, não tentar sincronizar tópicos
+    if (!notificationsEnabled) {
+      console.log(`📡 Notificações desativadas - ignorando sincronização para ${categoryId}`);
+      return;
+    }
+
+    // 3. Verificar permissão
+    if (Notification.permission !== 'granted') {
+      console.log(`📡 Permissão não concedida - ignorando ${categoryId}`);
+      return;
+    }
+
+    // 4. Tentar obter token FCM (com fallback)
+    let token;
+    try {
+      const messaging = getMessaging();
+      token = await getToken(messaging, {
+        vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ'
+      });
+    } catch (tokenError) {
+      console.warn('❌ Não foi possível obter token FCM:', tokenError.message);
+      return; // Não pode sincronizar sem token
+    }
+
+    if (!token) {
+      console.warn('❌ Token FCM não disponível para sincronizar tópicos');
+      return;
+    }
+
+    // 5. Chamar Cloud Function para gerenciar inscrição
     const functions = getFunctions();
     const manageSub = httpsCallable(functions, 'manageSubscription');
 
@@ -432,37 +957,88 @@ async function syncTopicSubscription(categoryId, isSubscribed) {
     });
 
     console.log(`📡 Notificações para ${categoryId}: ${isSubscribed ? 'Ativadas' : 'Desativadas'}`);
+
   } catch (error) {
+    // Erro específico do Service Worker - podemos ignorar silenciosamente
+    if (error.code === 'messaging/failed-service-worker-registration') {
+      console.warn(`⚠️ Service Worker não registrado - não foi possível sincronizar ${categoryId}`);
+      return;
+    }
+
     console.error("Erro ao sincronizar tópico:", error);
   }
 }
 
-// Função para ativar notificações
-async function enableNotifications() {
+// Função para diagnosticar Service Workers
+window.diagnoseServiceWorkers = async function () {
+  console.log('=== 🔍 DIAGNÓSTICO DE SERVICE WORKERS ===');
+
+  if (!('serviceWorker' in navigator)) {
+    console.log('❌ Navegador não suporta Service Worker');
+    return;
+  }
+
   try {
-    const messaging = getMessaging();
-    const token = await getToken(messaging, {
-      vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ'
+    // 1. Verificar SWs registrados
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    console.log(`📋 ${registrations.length} SW(s) registrado(s):`);
+
+    registrations.forEach((reg, i) => {
+      console.log(`  ${i + 1}. ${reg.scope}`);
+      console.log(`     Estado: ${reg.active ? 'Ativo' : 'Inativo'}`);
+      console.log(`     Instalando: ${reg.installing ? 'Sim' : 'Não'}`);
+      console.log(`     Esperando: ${reg.waiting ? 'Sim' : 'Não'}`);
     });
 
-    if (token) {
-      console.log("Token gerado:", token);
-      if (auth.currentUser) {
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        // ✅ Salvando na base de dados e no cache local
-        await updateDoc(userRef, {
-          fcmToken: token,
-          notificationsEnabled: true,
-          lastTokenUpdate: serverTimestamp()
-        }, { merge: true });
-        localStorage.setItem('notificationsEnabled', 'true');
-        console.log("✅ Preferência de notificação salva no Firestore");
+    // 2. Tentar registrar o Firebase SW
+    console.log('\n🔄 Tentando registrar Firebase Messaging SW...');
+    try {
+      const firebaseSW = await navigator.serviceWorker.register(
+        '/firebase-messaging-sw.js',
+        {
+          scope: '/firebase-cloud-messaging-push-scope/',
+          updateViaCache: 'none'
+        }
+      );
+
+      console.log('✅ Firebase SW registrado com sucesso');
+      console.log(`   Escopo: ${firebaseSW.scope}`);
+      console.log(`   Estado: ${firebaseSW.active ? 'Ativo' : 'Inativo'}`);
+
+      // Aguardar ativação se necessário
+      if (firebaseSW.installing) {
+        console.log('⏳ Aguardando ativação...');
+        return new Promise(resolve => {
+          firebaseSW.installing.addEventListener('statechange', (e) => {
+            console.log(`   Estado mudou para: ${e.target.state}`);
+            if (e.target.state === 'activated') {
+              console.log('🎉 Firebase SW ativado!');
+              resolve();
+            }
+          });
+        });
       }
+
+    } catch (regError) {
+      console.error('❌ Erro ao registrar Firebase SW:', regError.message);
     }
+
+    // 3. Verificar SW principal (seu app)
+    console.log('\n🔧 Verificando SW principal do app...');
+    try {
+      const appRegistration = await navigator.serviceWorker.ready;
+      console.log('✅ App SW pronto');
+      console.log(`   Escopo: ${appRegistration.scope}`);
+    } catch (appError) {
+      console.log('ℹ️ App SW não está pronto');
+    }
+
   } catch (error) {
-    console.error("Erro ao ativar notificações:", error);
+    console.error('❌ Erro no diagnóstico:', error);
   }
-}
+
+  console.log('=== FIM DO DIAGNÓSTICO ===');
+};
 
 /**
  * Fechar modal
