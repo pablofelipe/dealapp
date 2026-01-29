@@ -127,11 +127,7 @@ window.toggleInterest = async function (categoryId) {
       }
 
       // 3. Gerenciar inscrição no tópico
-      if (isAdding) {
-        await subscribeToTopic(categoryId, token);
-      } else {
-        await unsubscribeFromTopic(categoryId, token);
-      }
+      await syncTopicSubscriptions(token);
 
     } catch (error) {
       console.error("❌ Erro:", error);
@@ -336,17 +332,23 @@ async function initializeUserNotifications(user) {
       if (notificationsEnabled) {
         console.log('🔄 Notificações ativas, verificando token...');
 
-        // Verificar se tem token válido
-        if (!userData.fcmToken) {
-          console.log('⚠️ Notificações ativas mas sem token. Tentando gerar...');
-          await manageNotifications(true);
-        } else {
-          console.log('✅ Token FCM já existe:', userData.fcmToken.substring(0, 20) + '...');
+        let token = userData.fcmToken;
 
-          // Verificar se está inscrito nos tópicos atuais
-          const interests = userData.interests || JSON.parse(localStorage.getItem('userInterests') || '[]');
-          console.log(`📊 Interesses: ${interests.length} categorias`);
+        if (!token) {
+          console.log('⚠️ Sem token. Gerando...');
+          token = await enableNotifications();
+
+          await updateDoc(userRef, {
+            fcmToken: token,
+            lastTokenUpdate: serverTimestamp()
+          });
+        } else {
+          console.log('✅ Token FCM já existe:', token.substring(0, 20) + '...');
         }
+
+        // 🔥 AQUI estava faltando
+        console.log('🔁 Sincronizando tópicos com FCM...');
+        await syncTopicSubscriptions(token);
       }
     }
 
@@ -644,8 +646,8 @@ async function manageNotifications(shouldEnable) {
         localStorage.setItem('notificationsEnabled', 'true');
         console.log('✅ Notificações ativadas com sucesso');
 
-        // 3. Inscrever nos tópicos atuais
-        await subscribeToCurrentInterests(token);
+        // 3. Inscrever tópicos
+        await syncTopicSubscriptions(token);
 
         return true;
       } else {
@@ -664,7 +666,10 @@ async function manageNotifications(shouldEnable) {
 
       if (currentToken) {
         // Desinscrever de todos os tópicos
-        await unsubscribeFromAllTopics(currentToken);
+        await updateDoc(userRef, {
+          subscribedTopics: []
+        });
+
       }
 
       // 2. Atualizar estado
@@ -696,19 +701,46 @@ async function manageNotifications(shouldEnable) {
   }
 }
 
-// Inscrever em todos os interesses atuais
-async function subscribeToCurrentInterests(token) {
-  const interests = JSON.parse(localStorage.getItem('userInterests') || '[]');
-  console.log(`📡 Inscrevendo em ${interests.length} tópicos...`);
+async function syncTopicSubscriptions(token) {
+  const user = auth.currentUser;
+  if (!user) return;
 
-  for (const topic of interests) {
-    try {
-      await subscribeToTopic(topic, token);
-    } catch (error) {
-      console.warn(`⚠️ Não pôde inscrever em ${topic}:`, error.message);
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+
+  const desired = data.interests || [];
+  const subscribed = data.subscribedTopics || [];
+
+  const toSubscribe = desired.filter(t => !subscribed.includes(t));
+  const toUnsubscribe = subscribed.filter(t => !desired.includes(t));
+
+  console.log("📡 Delta tópicos:");
+  console.log(" ➕ Inscrever:", toSubscribe);
+  console.log(" ➖ Remover:", toUnsubscribe);
+
+  for (const topic of toSubscribe) {
+    const ok = await subscribeToTopic(topic, token);
+    if (ok) subscribed.push(topic);
+  }
+
+  for (const topic of toUnsubscribe) {
+    const ok = await unsubscribeFromTopic(topic, token);
+    if (ok) {
+      const idx = subscribed.indexOf(topic);
+      if (idx !== -1) subscribed.splice(idx, 1);
     }
   }
+
+  await updateDoc(userRef, {
+    subscribedTopics: subscribed,
+    lastSubscriptionSync: serverTimestamp()
+  });
 }
+
+
 
 // Desinscrever de todos os tópicos
 async function unsubscribeFromAllTopics(token) {
