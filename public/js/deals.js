@@ -52,7 +52,7 @@ export async function loadNearbyDeals() {
   try {
     const position = await getCurrentLocation(TIMEOUT_GPS).catch(() => null);
     const dealsRef = collection(db, 'deals');
-    const q = query(dealsRef, where('status', '==', 'active'));
+    const q = query(dealsRef, where('status', '==', 'active'), where('stockAvailable', '>', 0));
     const snapshot = await getDocs(q);
 
     let deals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
