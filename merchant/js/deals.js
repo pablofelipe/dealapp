@@ -12,6 +12,9 @@ import {
   orderBy,
   getDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+const storage = getStorage();
 
 // Carregar ofertas do lojista
 export async function loadMerchantDeals(merchantId) {
@@ -442,7 +445,52 @@ async function createDeal() {
   }
 }
 
-// Obter imagem da oferta
+async function handleFileUpload(blob) {
+  const fileName = `deals/${auth.currentUser.uid}/${Date.now()}.jpg`;
+  const storageRef = ref(storage, fileName);
+
+  const metadata = {
+    contentType: 'image/jpeg'
+  };
+
+  const snapshot = await uploadBytes(storageRef, blob, metadata);
+  return await getDownloadURL(snapshot.ref);
+}
+
+// Função simples para comprimir a imagem
+async function compressImage(file) {
+  if (!file) return null;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800; // Tamanho ideal para web
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, 'image/jpeg', 0.7); // 70% de qualidade é perfeito
+      };
+    };
+  });
+}
+
 // Obter imagem da oferta
 async function getDealImage() {
   try {
@@ -460,25 +508,33 @@ async function getDealImage() {
     console.warn('⚠️ Erro ao processar URL da imagem:', error.message);
   }
 
-  // Se não tem URL válida, verifica arquivo
-  try {
-    const imageFile = document.getElementById('deal-image-file');
-    if (imageFile && imageFile.files && imageFile.files[0]) {
-      console.log('📤 Enviando arquivo de imagem...');
-      const uploadedUrl = await uploadImageToStorage(imageFile.files[0], auth.currentUser?.uid);
-      if (uploadedUrl) {
-        console.log('✅ Imagem enviada:', uploadedUrl);
-        return uploadedUrl;
-      }
+  // No momento de criar a oferta (dentro do seu createDeal)
+  const imageInput = document.getElementById('deal-image-input');
+
+  const imageFile = imageInput ? imageInput.files[0] : null; // Pega o arquivo se existir
+  let imageUrl = '';
+
+  if (imageFile) {
+    try {
+      console.log("📸 Processando imagem...");
+      // 1. Comprime a imagem (opcional, mas bom)
+      const compressedFile = await compressImage(imageFile);
+
+      // 2. Faz o upload com o metadata correto (JPG)
+      imageUrl = await handleFileUpload(compressedFile);
+      console.log("✅ Imagem pronta:", imageUrl);
+    } catch (error) {
+      console.error("⚠️ Falha na imagem, usando padrão:", error);
+      imageUrl = '/public/assets/img-ind.png';
     }
-  } catch (uploadError) {
-    console.warn('⚠️ Erro ao processar arquivo de imagem:', uploadError.message);
+  } else {
+    // Se o lojista não tirou foto, usa a padrão sem dar erro
+    imageUrl = '/public/assets/img-ind.png';
+    console.log('📷 Nenhuma imagem fornecida, usando imagem padrão');
   }
 
-  console.log('📷 Nenhuma imagem fornecida, usando imagem padrão');
-  return '/public/assets/img-ind.png';
+  return imageUrl;
 }
-
 
 // Resetar formulário
 function resetDealForm() {
@@ -513,8 +569,6 @@ function isValidUrl(string) {
     return false;
   }
 }
-
-// ========== FUNÇÕES DE SUPORTE ==========
 
 // ========== FUNÇÕES DE SUPORTE ==========
 

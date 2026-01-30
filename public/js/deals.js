@@ -27,7 +27,8 @@ const CATEGORY_LABELS = {
   restaurant: 'Restaurante',
   services: 'Serviços',
   supermarket: 'Supermercado',
-  clothing: 'Moda & Vestuário'
+  clothing: 'Moda & Vestuário',
+  other: 'Outros'
 };
 
 const TIMEOUT_GPS = 5000; // 5 segundos para desistir do GPS

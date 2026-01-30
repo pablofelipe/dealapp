@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeApp();
 });
 
-// Adicione também no unload para limpar
 window.addEventListener('beforeunload', () => {
   eventListenersManager.clearAll();
   cleanupCurrentView();

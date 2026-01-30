@@ -59,7 +59,8 @@ const CATEGORIES = [
   { id: 'restaurant', label: 'Restaurante', emoji: '🍽️' },
   { id: 'services', label: 'Serviços', emoji: '🛠️' },
   { id: 'supermarket', label: 'Mercado', emoji: '🛒' },
-  { id: 'clothing', label: 'Moda', emoji: '👕' }
+  { id: 'clothing', label: 'Moda', emoji: '👕' },
+  { id: 'other', label: 'Outros', emoji: '❓' }
 ];
 
 // 2. Função para renderizar as pílulas no Perfil
@@ -833,7 +834,11 @@ async function enableNotifications() {
     }
 
     console.log('🔑 Solicitando token FCM...');
-    token = await getToken(messaging, options);
+    //token = await getToken(messaging, options);
+    const token = await getToken(messaging, {
+      vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ',
+      serviceWorkerRegistration: registration
+    });
 
     if (!token) {
       throw new Error('Token não foi gerado');

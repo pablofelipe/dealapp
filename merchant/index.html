@@ -584,9 +584,25 @@
               </div>
 
               <div id="upload-container" class="upload-container">
-                <!-- REMOVIDO: Opção de upload de arquivo -->
-
-                <!-- REMOVIDO: Separador "ou" -->
+                <div class="form-group">
+                  <label>Foto do Produto</label>
+                  <div class="photo-upload-container">
+                    <input
+                      type="file"
+                      id="deal-image-input"
+                      accept="image/*"
+                      capture="environment"
+                      class="hidden-input"
+                    />
+                    <label
+                      for="deal-image-input"
+                      class="photo-placeholder"
+                      id="photo-preview"
+                    >
+                      <span>📸 Tirar Foto da Oferta</span>
+                    </label>
+                  </div>
+                </div>
 
                 <div class="upload-option">
                   <div
