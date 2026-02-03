@@ -360,7 +360,7 @@ async function handleAuthStateChange(user) {
         // Tem cadastro completo
         currentMerchant = merchantProfile;
 
-        updateMerchantInfo(merchantProfile);
+        //updateMerchantInfo(merchantProfile);
 
         showPanelScreen();
         await loadInitialData();
@@ -597,14 +597,14 @@ async function loadViewData(viewName) {
         console.log('✅ Dados carregados para edição:', merchant?.tradingName);
 
         // Configurar listeners específicos para esta view
-        setupEditMerchantListeners();
+        //setupEditMerchantListeners();
       } catch (error) {
         console.error('Erro ao carregar merchant para edição:', error);
       }
       break;
     case 'create-deal':
       // Inicializar o formulário de criação de oferta
-      initCreateDealForm();
+      //initCreateDealForm();
 
       // Configurar listeners para o formulário de criação
       setupCreateDealListeners();

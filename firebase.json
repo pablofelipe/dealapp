@@ -1,32 +1,53 @@
 {
-  "hosting": {
-    "public": ".",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      {
-        "source": "/merchant",
-        "destination": "/merchant.html"
-      }
-    ]
+  "functions": {
+    "source": "functions"
   },
   "firestore": {
-    "database": "(default)",
-    "location": "southamerica-east1",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "disallowLegacyRuntimeConfig": true,
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ]
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "firestore.rules",
+      "storage.rules",
+      "*.json"
+    ],
+    "rewrites": [
+      {
+        "source": "/app",
+        "destination": "/public/index.html"
+      },
+      {
+        "source": "/painel",
+        "destination": "/merchant/index.html"
+      }
+    ]
+  },
+  "emulators": {
+    "hosting": {
+      "port": 5000
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "auth": {
+      "port": 9099
+    },
+    "storage": {
+      "port": 9199
+    },
+    "functions": {
+      "port": 5001
+    },
+    "ui": {
+      "enabled": true
     }
-  ]
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
 }

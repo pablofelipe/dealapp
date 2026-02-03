@@ -445,6 +445,8 @@ async function createDeal() {
   }
 }
 
+//function showView(viewId) { }
+
 async function handleFileUpload(blob) {
   const fileName = `deals/${auth.currentUser.uid}/${Date.now()}.jpg`;
   const storageRef = ref(storage, fileName);
