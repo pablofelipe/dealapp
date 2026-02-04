@@ -71,7 +71,11 @@ function renderCategoryInterests() {
   // Recupera as preferências já salvas (ou um array vazio)
   let userInterests = localStorage.getItem('userInterests');
 
-  let savedInterests = DEFAULT_CATEGORIES
+  //let savedInterests = DEFAULT_CATEGORIES
+  const ALL_CATEGORIES_ = CATEGORIES.map(cat => cat.id);
+
+  let savedInterests = ALL_CATEGORIES_;
+
   if (!userInterests) {
     localStorage.setItem('userInterests', JSON.stringify(savedInterests));
     console.log("✨ Perfil inicial padrão aplicado.");

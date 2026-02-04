@@ -31,6 +31,8 @@ const CATEGORY_LABELS = {
   other: 'Outros'
 };
 
+const ALL_IDS = ['butcher', 'bakery', 'home-gifts', 'electronics', 'pharmacy', 'fruit-veg', 'petshop', 'pizzeria', 'restaurant', 'services', 'supermarket', 'clothing', 'other'];
+
 const TIMEOUT_GPS = 5000; // 5 segundos para desistir do GPS
 
 export async function loadNearbyDeals() {
@@ -39,7 +41,7 @@ export async function loadNearbyDeals() {
   let userInterests = localStorage.getItem('userInterests');
 
   if (!userInterests) {
-    userInterests = ['bakery', 'fruit-veg', 'pizzeria', 'restaurant', 'supermarket'];
+    userInterests = ALL_IDS;
     localStorage.setItem('userInterests', JSON.stringify(userInterests));
   } else {
     userInterests = JSON.parse(userInterests);
