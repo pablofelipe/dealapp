@@ -159,6 +159,8 @@ export function initializeAuth() {
         currentUser = userData;
         notifyAuthListeners(userData);
 
+        inicializarConcierge(userData);
+
       } else {
         console.log('👤 Nenhum usuário autenticado');
         currentUser = null;
@@ -170,6 +172,20 @@ export function initializeAuth() {
       notifyAuthListeners(null);
     }
   });
+}
+
+export async function inicializarConcierge(userData) {
+  try {
+    //console.log('🚀 Inicializando concierge para:', JSON.stringify(userData));
+
+    const { inicializarConcierge: conciergeUI } = await import('./merchant.js');
+
+    return await conciergeUI(userData);
+
+  } catch (error) {
+    console.error('❌ Erro ao inicializar concierge:', error);
+    return null;
+  }
 }
 
 // ========== FUNÇÕES PRIVADAS ==========

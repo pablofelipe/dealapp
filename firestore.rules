@@ -38,10 +38,10 @@ service cloud.firestore {
     }
     
     match /merchants/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if true; // Qualquer um vê ofertas
       
       // Permite criar com qualquer campo (incluindo o vendorCode opcional)
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if request.auth != null;
 
       // No update, garantimos que o vendorCode enviado é IGUAL ao que já estava lá
       // Ou seja: o lojista não pode mudar o valor que foi definido no cadastro.

@@ -324,8 +324,14 @@ async function createDeal() {
 
     console.log('🔄 Iniciando criação de oferta...');
 
+    const selectConcierge = document.getElementById('select-lojista');
+
+    const merchantIdFinal = (selectConcierge.value) ? selectConcierge.value : auth.currentUser?.uid;
     // 1. Verificar autenticação
+    /*
     const merchantId = auth.currentUser?.uid;
+    */
+    const merchantId = merchantIdFinal;
     if (!merchantId) {
       throw new Error('Você precisa estar logado para criar ofertas.');
     }
@@ -445,7 +451,7 @@ async function createDeal() {
   }
 }
 
-//function showView(viewId) { }
+function showView(viewId) { }
 
 async function handleFileUpload(blob) {
   const fileName = `deals/${auth.currentUser.uid}/${Date.now()}.jpg`;

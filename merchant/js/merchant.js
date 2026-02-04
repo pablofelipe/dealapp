@@ -1,7 +1,9 @@
 import { db } from './firebase-config.js';
 import {
+    collection,
     doc,
     getDoc,
+    getDocs,
     setDoc,
     updateDoc,
     serverTimestamp
@@ -441,21 +443,6 @@ function isValidPhone(phone) {
 // ========== FUNÇÕES DE CONSULTA ==========
 
 /**
- * Busca merchant por CNPJ (para evitar duplicatas)
- */
-export async function findMerchantByCNPJ(cnpj) {
-    try {
-        // Nota: Firestore não suporta queries em subcoleções diretamente
-        // Em produção, crie um índice ou use Cloud Functions
-        console.warn('⚠️ Busca por CNPJ requer configuração especial no Firestore');
-        return null;
-    } catch (error) {
-        console.error('❌ Erro ao buscar por CNPJ:', error);
-        return null;
-    }
-}
-
-/**
  * Atualiza estatísticas do merchant
  */
 export async function updateMerchantStats(uid, statsUpdate) {
@@ -492,11 +479,6 @@ export function getFormattedLocation(merchant) {
     return parts.join(', ');
 }
 
-// ========== CONFIGURAÇÃO INICIAL ==========
-
-/**
- * Configura máscaras para formulário (para uso no DOM)
- */
 export function setupFormMasks() {
     return {
         maskCNPJ: function (input) {
@@ -532,4 +514,44 @@ export function setupFormMasks() {
             input.value = value;
         }
     };
+}
+
+let conciergeInicializado = false;
+
+export async function inicializarConcierge(user) {
+
+    if (conciergeInicializado) return;
+
+    if (user.email === "pablofelipe@gmail.com") {
+        const divConcierge = document.getElementById('concierge-control');
+        const select = document.getElementById('select-lojista');
+
+        if (!divConcierge || !select) return;
+
+        console.log('Inicializando controle de concierge para:', user.email);
+
+        try {
+
+            conciergeInicializado = true;
+
+            select.innerHTML = '<option value="">-- MINHA PRÓPRIA OFERTA --</option>';
+
+            const querySnapshot = await getDocs(collection(db, "merchants"));
+
+            console.log("🔍 Total de documentos encontrados:", querySnapshot.size);
+
+            querySnapshot.forEach((doc) => {
+
+                const data = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = data.tradingName;
+                select.appendChild(option);
+            });
+            divConcierge.style.display = 'block';
+        } catch (error) {
+            console.error('❌ Erro ao inicializar concierge:', error);
+            conciergeInicializado = false;
+        }
+    }
 }
