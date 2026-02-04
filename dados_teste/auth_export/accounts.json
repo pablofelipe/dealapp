@@ -1,0 +1,90 @@
+{
+  "kind": "identitytoolkit#DownloadAccountResponse",
+  "users": [
+    {
+      "localId": "47T4Agj5eSEiXcQr8GAEqbL2KXtY",
+      "createdAt": "1770124998447",
+      "lastLoginAt": "1770127912565",
+      "providerUserInfo": [
+        {
+          "providerId": "google.com",
+          "rawId": "8305080647132377950518492423841760840261",
+          "federatedId": "8305080647132377950518492423841760840261",
+          "email": "am@padaria.com.br"
+        }
+      ],
+      "validSince": "1770171912",
+      "email": "am@padaria.com.br",
+      "emailVerified": true,
+      "disabled": false
+    },
+    {
+      "localId": "A9aiaUQHH7pAYE5XbifmZLvGBQtZ",
+      "createdAt": "1770125016762",
+      "lastLoginAt": "1770167307141",
+      "providerUserInfo": [
+        {
+          "providerId": "google.com",
+          "rawId": "1288937614621738215305404583366569813698",
+          "federatedId": "1288937614621738215305404583366569813698",
+          "email": "etica@drogaria.com.br"
+        }
+      ],
+      "validSince": "1770171912",
+      "email": "etica@drogaria.com.br",
+      "emailVerified": true,
+      "disabled": false
+    },
+    {
+      "localId": "amnHcjkusfZmiSx7QQfO0ogQeefk",
+      "createdAt": "1770125084683",
+      "lastLoginAt": "1770167805964",
+      "providerUserInfo": [
+        {
+          "providerId": "google.com",
+          "rawId": "2272397750786806949019803120166176074520",
+          "federatedId": "2272397750786806949019803120166176074520",
+          "email": "hortifruti@soupratico.com.br"
+        }
+      ],
+      "validSince": "1770171912",
+      "email": "hortifruti@soupratico.com.br",
+      "emailVerified": true,
+      "disabled": false
+    },
+    {
+      "localId": "ctkuCrS2FClHW5s1f1jK5IEsmFZ8",
+      "createdAt": "1770125062140",
+      "lastLoginAt": "1770167686591",
+      "providerUserInfo": [
+        {
+          "providerId": "google.com",
+          "rawId": "8076104611038525541360553979072379899730",
+          "federatedId": "8076104611038525541360553979072379899730",
+          "email": "mb@supermercado.com.br"
+        }
+      ],
+      "validSince": "1770171912",
+      "email": "mb@supermercado.com.br",
+      "emailVerified": true,
+      "disabled": false
+    },
+    {
+      "localId": "gTBONjLI5igxMZjBfisvpoQ7yvcn",
+      "createdAt": "1770125039700",
+      "lastLoginAt": "1770167511125",
+      "providerUserInfo": [
+        {
+          "providerId": "google.com",
+          "rawId": "1913275606260724483266107430408285096760",
+          "federatedId": "1913275606260724483266107430408285096760",
+          "email": "belenzinho@ciadosboloscaseiros.com.br"
+        }
+      ],
+      "validSince": "1770171912",
+      "email": "belenzinho@ciadosboloscaseiros.com.br",
+      "emailVerified": true,
+      "disabled": false
+    }
+  ]
+}
