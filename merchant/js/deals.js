@@ -233,11 +233,13 @@ function getInputValue(id, fieldName, required = true) {
 }
 
 function getNumberValue(id, fieldName, required = true, min = 0) {
-  const value = getInputValue(id, fieldName, required);
+  let value = getInputValue(id, fieldName, required);
 
   if (value === '' && !required) {
     return 0;
   }
+
+  value = value.replace(',', '.');
 
   const number = parseFloat(value);
 
