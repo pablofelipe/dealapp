@@ -87,25 +87,4 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   console.log('Notificação clicada:', event.notification);
   event.notification.close();
-
-  const data = event.notification.data;
-  const urlToOpen = data.dealId ? `/deal/${data.dealId}` : '/';
-
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    }).then(clientList => {
-      // Tentar focar em uma janela existente
-      for (const client of clientList) {
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Abrir nova janela
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
 });

@@ -207,7 +207,7 @@ function setupCEPSearch() {
                         document.getElementById('edit-merchant-state').value = data.state || '';
                     }
                 } catch (error) {
-                    console.warn('CEP não encontrado ou erro na busca');
+                    console.warn('CEP não encontrado ou erro na busca. error: ', error.message);
                 }
             }
         }, 800); // Debounce de 800ms

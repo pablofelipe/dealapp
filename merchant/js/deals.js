@@ -9,7 +9,6 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
-  orderBy,
   getDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
@@ -196,7 +195,7 @@ window.reactivateExpiredDeal = async function (dealId) {
     await updateDoc(dealRef, {
       status: 'active',
       expiresAt: Timestamp.fromDate(newExpiresAt),
-      stockAvailable: dealData.stockTotal,
+      stockAvailable: dealRef.stockTotal,
       updatedAt: Timestamp.now()
     });
 
@@ -546,31 +545,6 @@ async function getDealImage() {
   return imageUrl;
 }
 
-// Resetar formulário
-function resetDealForm() {
-  try {
-    const form = getElement('deal-form', 'Formulário');
-    form.reset();
-
-    // Limpar preview de imagem
-    const imagePreview = document.getElementById('image-preview');
-    if (imagePreview) imagePreview.style.display = 'none';
-
-    const uploadContainer = document.getElementById('upload-container');
-    if (uploadContainer) uploadContainer.style.display = 'block';
-
-    // Limpar URL da imagem
-    const imageUrlInput = document.getElementById('deal-image-url');
-    if (imageUrlInput) imageUrlInput.value = '';
-
-    const previewContainer = document.getElementById('preview-card-container');
-    if (previewContainer) previewContainer.innerHTML = "";
-
-  } catch (error) {
-    console.warn('⚠️ Não foi possível limpar o formulário:', error.message);
-  }
-}
-
 function isValidUrl(string) {
   try {
     new URL(string);
@@ -581,47 +555,6 @@ function isValidUrl(string) {
 }
 
 // ========== FUNÇÕES DE SUPORTE ==========
-
-async function uploadImageToStorage(file, merchantId) {
-  return new Promise((resolve, reject) => {
-    try {
-      // Para DEMONSTRAÇÃO: Cria um URL local temporário
-      // Em produção, substitua por upload real para Firebase Storage
-      console.log('📤 Simulando upload de imagem:', file.name, file.size);
-
-      // Cria um URL local para a imagem
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        console.log('✅ Imagem convertida para base64');
-
-        // Em produção:
-        // 1. Fazer upload para Firebase Storage
-        // 2. Obter URL de download
-        // 3. Retornar URL real
-
-        // Por enquanto, retornamos um placeholder ou URL local
-        resolve(e.target.result); // base64 data URL
-      };
-
-      reader.onerror = (error) => {
-        console.error('❌ Erro ao ler arquivo:', error);
-        reject(error);
-      };
-
-      reader.readAsDataURL(file);
-
-      // Simula tempo de upload
-      setTimeout(() => {
-        console.log('⏱️ Upload simulado concluído');
-      }, 1000);
-
-    } catch (error) {
-      console.error('❌ Erro no upload de imagem:', error);
-      reject(error);
-    }
-  });
-}
-
 
 function showNotification(type, message) {
   const existing = document.querySelector('.deal-notification');

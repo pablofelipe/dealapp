@@ -113,20 +113,6 @@ function debounce(func, wait) {
   };
 }
 
-// Inicializar badge quando a página carrega
-function initializeMerchantBadge() {
-  console.log('🔍 Inicializando badge do merchant...');
-
-  // Tentar carregar do localStorage
-  const cachedMerchant = loadMerchantFromLocalStorage();
-
-  // Se não tiver usuário logado mas tiver dados em cache, mostrar
-  if (!currentUser && cachedMerchant) {
-    console.log('🏪 Mostrando badge do cache (usuário não logado)');
-    updateMerchantInfo(cachedMerchant);
-  }
-}
-
 // ========== SETUP DE EVENTOS ==========
 
 function setupEventListeners() {
@@ -424,22 +410,6 @@ window.updateMerchantInfo = function (merchantData) {
   return true;
 };
 
-// Adicione esta função para carregar do localStorage
-function loadMerchantFromLocalStorage() {
-  try {
-    const saved = localStorage.getItem('currentMerchant');
-    if (saved) {
-      const merchant = JSON.parse(saved);
-      console.log('📂 Merchant carregado do localStorage:', merchant.tradingName);
-      updateMerchantInfo(merchant);
-      return merchant;
-    }
-  } catch (e) {
-    console.error('❌ Erro ao carregar do localStorage:', e);
-  }
-  return null;
-}
-
 // Modifique handleNewLogin ou onde você recebe os dados do merchant:
 async function handleNewLogin(user) {
   currentUser = user;
@@ -577,7 +547,6 @@ function addViewListener(element, event, handler) {
   currentViewListeners.add({ element, event, handler });
 }
 
-// No showView, substitua:
 async function loadViewData(viewName) {
   if (!currentUser) return;
 

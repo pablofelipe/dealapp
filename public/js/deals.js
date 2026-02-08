@@ -8,32 +8,67 @@ import {
 
 // Configurações do Radar
 const getPreferredRadius = () => parseInt(localStorage.getItem('userRadius')) || 10;
+
 const CATEGORY_EMOJIS = {
-  butcher: '🥩', bakery: '🥖', 'home-gifts': '🏠', electronics: '💻',
-  pharmacy: '💊', 'fruit-veg': '🍎', petshop: '🐾', pizzeria: '🍕',
-  restaurant: '🍽️', services: '🛠️', supermarket: '🛒', clothing: '👕', other: '❓'
+  adega: '🍷',
+  butcher: '🥩',
+  automotive: '🚗',
+  drinks: '🥤',
+  toys: '🧸',
+  fitness: '🥣',
+  frozen: '❄️',
+  electronics: '💻',
+  pharmacy: '💊',
+  dairy: '🧀',
+  florist: '🌻',
+  cleaning: '🧼',
+  hortifruti: '🥦',
+  grocery: '🥫',
+  bakery: '🥐',
+  stationery: '📝',
+  fishmonger: '🐟',
+  petshop: '🐾',
+  pizzeria: '🍕',
+  restaurant: '🍽️',
+  services: '🛠️',
+  home_utilities: '🏠',
+  clothing: '👕',
+  other: '✨'
 };
 
-// Tradução dos IDs do banco para exibição ao público
 const CATEGORY_LABELS = {
+  adega: 'Adega',
   butcher: 'Açougue',
-  bakery: 'Padaria',
-  'home-gifts': 'Casa & Presentes',
-  electronics: 'Tecnologia',
+  automotive: 'Automotivo',
+  drinks: 'Bebidas',
+  toys: 'Brinquedos',
+  fitness: 'Cereais e Fitness',
+  frozen: 'Congelados',
+  electronics: 'Eletrônicos',
   pharmacy: 'Farmácia',
-  'fruit-veg': 'Hortifruti',
+  dairy: 'Frios e Laticínios',
+  florist: 'Floricultura',
+  cleaning: 'Higiene e Limpeza',
+  hortifruti: 'Hortifruti',
+  grocery: 'Mercearia',
+  bakery: 'Padaria/Confeitaria',
+  stationery: 'Papelaria',
+  fishmonger: 'Peixaria',
   petshop: 'Pet Shop',
   pizzeria: 'Pizzaria',
   restaurant: 'Restaurante',
   services: 'Serviços',
-  supermarket: 'Supermercado',
-  clothing: 'Moda & Vestuário',
+  home_utilities: 'Utilidades Domésticas',
+  clothing: 'Vestuário',
   other: 'Outros'
 };
 
-const ALL_IDS = ['butcher', 'bakery', 'home-gifts', 'electronics', 'pharmacy', 'fruit-veg', 'petshop', 'pizzeria', 'restaurant', 'services', 'supermarket', 'clothing', 'other'];
+const ALL_IDS = Object.keys(CATEGORY_LABELS);
 
 const TIMEOUT_GPS = 5000; // 5 segundos para desistir do GPS
+
+let allDeals = []; // Armazena todas as ofertas carregadas
+let currentFilter = 'all'; // Filtro atual
 
 export async function loadNearbyDeals() {
   console.log('🚀 Iniciando loadNearbyDeals com filtros do usuário');
@@ -47,7 +82,6 @@ export async function loadNearbyDeals() {
     userInterests = JSON.parse(userInterests);
   }
 
-  // Limpa a lista atual para evitar duplicatas ao trocar de aba
   const dealsList = document.getElementById('deals-list');
   if (dealsList) dealsList.innerHTML = '';
 
@@ -59,7 +93,7 @@ export async function loadNearbyDeals() {
 
     let deals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
 
-    // 1. Filtro de Validade (Mantendo sua lógica de Timezone Offset)
+    // 1. Filtro de Validade
     deals = deals.filter(deal => {
       if (deal.isUnlimited) return true;
       if (!deal.expiresAt) return true;
@@ -67,7 +101,7 @@ export async function loadNearbyDeals() {
       return deal.expiresAt.toDate() >= nowUTC;
     });
 
-    // 2. Filtro de Interesses (Categorias)
+    // 2. Filtro de Interesses (Categorias do perfil)
     if (userInterests.length > 0) {
       deals = deals.filter(deal => userInterests.includes(deal.category));
     }
@@ -86,29 +120,135 @@ export async function loadNearbyDeals() {
           distance: dist,
           distanceText: dist < 1 ? `${(dist * 1000).toFixed(0)}m` : `${dist.toFixed(1)}km`
         };
-      }).filter(deal => deal.distance <= maxRadius); // Usa o raio do perfil aqui!
+      }).filter(deal => deal.distance <= maxRadius);
 
-      //deals.sort((a, b) => a.distance - b.distance);
-
-      // Ordena primariamente por data (mais nova primeiro)
       deals.sort((a, b) => {
         const dataA = a.createdAt?.toDate?.() || new Date(0);
         const dataB = b.createdAt?.toDate?.() || new Date(0);
 
         if (dataB - dataA !== 0) {
-          return dataB - dataA; // Mais recente primeiro
+          return dataB - dataA;
         }
-        // Se forem do mesmo segundo, desempata pela distância
         return a.distance - b.distance;
       });
     }
 
-    renderDeals(deals);
+    console.log(`✅ Ofertas carregadas: ${deals.length} ofertas encontradas após aplicação de filtros`);
+
+    // Armazena todas as ofertas para filtragem
+    allDeals = deals;
+
+    // Popula o dropdown de filtro
+    populateCategoryFilter(deals);
+
+    // Aplica filtros iniciais
+    applyFilters();
+
   } catch (error) {
     console.error("❌ Erro crítico:", error);
     renderDeals([]);
   }
 }
+
+// Modifique a função renderDeals para mostrar o estado do filtro
+export function renderDeals(deals) {
+  const dealsList = document.getElementById('deals-list');
+  if (!dealsList) return;
+
+  const savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
+  const hasFilters = savedInterests.length > 0;
+  const filterSelect = document.getElementById('category-filter');
+  const currentCategory = filterSelect ? filterSelect.options[filterSelect.selectedIndex].text : '';
+
+  if (!deals || !Array.isArray(deals) || deals.length === 0) {
+    let title = "Nada no Radar... ainda!";
+    let message = "Ainda não encontramos ofertas nesta região.";
+    let actionButton = '';
+
+    if (currentFilter !== 'all') {
+      title = `Nenhuma oferta encontrada`;
+      message = `Não encontramos ofertas na categoria "${currentCategory.split(' ')[1] || currentFilter}".`;
+      actionButton = `<button onclick="window.showAllCategories()" class="btn-outline">📂 Ver todas as categorias</button>`;
+    } else if (hasFilters) {
+      message = "Não encontramos ofertas nessas categorias. Que tal expandir sua busca?";
+      actionButton = `<button onclick="window.clearFilters()" class="btn-outline">🧹 Limpar Filtros</button>`;
+    } else {
+      message = "Seja o primeiro a movimentar seu bairro! Indique sua loja favorita.";
+      actionButton = `<a href="https://wa.me/?text=Oi!%20Conheci%20o%20Radar%20da%20Oferta%20e%20queria%20ver%20sua%20loja%20lá.%20Cadastra%20aí:%20radardaoferta.com.br" target="_blank" class="btn-primary-small">📢 Indicar Comércio</a>`;
+    }
+
+    dealsList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📡</div>
+        <h3>${title}</h3>
+        <p>${message}</p>
+        <div class="empty-actions">
+            ${actionButton}
+            <button onclick="location.reload()" class="btn-text">🔄 Tentar atualizar</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  dealsList.innerHTML = "";
+
+  deals.forEach(deal => {
+    const dealCard = createDealCard(deal);
+    dealsList.appendChild(dealCard);
+  });
+}
+
+function extractUniqueCategories(deals) {
+  const categories = new Set();
+  deals.forEach(deal => {
+    if (deal.category && CATEGORY_LABELS[deal.category]) {
+      categories.add(deal.category);
+    }
+  });
+  return Array.from(categories).sort((a, b) =>
+    CATEGORY_LABELS[a].localeCompare(CATEGORY_LABELS[b])
+  );
+}
+
+function populateCategoryFilter(deals) {
+  const filterSelect = document.getElementById('category-filter');
+  if (!filterSelect) return;
+
+  // Limpa opções existentes (exceto "TODAS")
+  while (filterSelect.options.length > 1) {
+    filterSelect.remove(1);
+  }
+
+  const uniqueCategories = extractUniqueCategories(deals);
+
+  // Adiciona cada categoria como opção
+  uniqueCategories.forEach(categoryId => {
+    const option = document.createElement('option');
+    option.value = categoryId;
+    option.textContent = `${CATEGORY_EMOJIS[categoryId] || '🏷️'} ${CATEGORY_LABELS[categoryId] || categoryId}`;
+    filterSelect.appendChild(option);
+  });
+
+  // Adiciona evento de mudança
+  filterSelect.addEventListener('change', (e) => {
+    currentFilter = e.target.value;
+    applyFilters();
+  });
+}
+
+// Adicione esta função para aplicar os filtros
+function applyFilters() {
+  let filteredDeals = [...allDeals];
+
+  // Aplica filtro de categoria
+  if (currentFilter !== 'all') {
+    filteredDeals = filteredDeals.filter(deal => deal.category === currentFilter);
+  }
+
+  // Renderiza as ofertas filtradas
+  renderDeals(filteredDeals);
+}
+
 
 // Helper: Promessa de Localização com Timeout
 function getCurrentLocation(timeout) {
@@ -131,55 +271,6 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
-}
-
-/**
- * Renderizar lista de ofertas
- */
-export function renderDeals(deals) {
-  const dealsList = document.getElementById('deals-list');
-  if (!dealsList) return;
-
-  // Verifica se o usuário tem filtros de categoria ativos
-  const savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
-  const hasFilters = savedInterests.length > 0;
-
-  // Proteção contra undefined ou lista vazia
-  if (!deals || !Array.isArray(deals) || deals.length === 0) {
-
-    // Mensagem personalizada dependendo do cenário
-    let title = "Nada no Radar... ainda!";
-    let message = "Ainda não encontramos ofertas nesta região.";
-    let actionButton = '';
-
-    if (hasFilters) {
-      message = "Não encontramos ofertas nessas categorias. Que tal expandir sua busca?";
-      actionButton = `<button onclick="window.clearFilters()" class="btn-outline">🧹 Limpar Filtros</button>`;
-    } else {
-      message = "Seja o primeiro a movimentar seu bairro! Indique sua loja favorita.";
-      // Esse link abre o WhatsApp para o usuário mandar para o lojista ou para você
-      actionButton = `<a href="https://wa.me/?text=Oi!%20Conheci%20o%20Radar%20da%20Oferta%20e%20queria%20ver%20sua%20loja%20lá.%20Cadastra%20aí:%20radardaoferta.com.br" target="_blank" class="btn-primary-small">📢 Indicar Comércio</a>`;
-    }
-
-    dealsList.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📡</div>
-        <h3>${title}</h3>
-        <p>${message}</p>
-        <div class="empty-actions">
-            ${actionButton}
-            <button onclick="location.reload()" class="btn-text">🔄 Tentar atualizar</button>
-        </div>
-      </div>`;
-    return;
-  }
-
-  // Se tiver ofertas, renderiza normalmente
-  dealsList.innerHTML = ''; // Limpa antes de adicionar
-  deals.forEach(deal => {
-    const dealCard = createDealCard(deal);
-    dealsList.appendChild(dealCard);
-  });
 }
 
 // Pequena função auxiliar para o botão de limpar filtros funcionar

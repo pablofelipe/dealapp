@@ -1,7 +1,6 @@
 import { db, functions, auth } from './firebase-config.js';
 import {
   collection,
-  addDoc,
   setDoc,
   doc,
   getDoc,
@@ -9,7 +8,6 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
   Timestamp,
   increment
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -278,7 +276,6 @@ export async function loadStats(merchantId) {
     const dealIds = dealsSnapshot.docs.map(doc => doc.id);
 
     // Estatísticas
-    let totalDeals = dealIds.length;
     let activeDeals = 0;
     let totalCoupons = 0;
     let redeemedCoupons = 0;
