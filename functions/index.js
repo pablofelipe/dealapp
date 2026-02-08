@@ -1,8 +1,296 @@
-// functions/index.js
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { onRequest } = require('firebase-functions/v2/https');
+const logger = require('firebase-functions/logger');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 admin.initializeApp();
+
+exports.processOfferWithAI = onRequest({
+    cors: true,
+    secrets: ["GEMINI_API_KEY"],
+    timeoutSeconds: 20,
+    memory: '256MiB',
+}, async (req, res) => {
+    const API_KEY = process.env.GEMINI_API_KEY;
+    const { imageBase64, title, price, mimeType } = req.body;
+
+    try {
+        if (!API_KEY) {
+            return res.status(200).json(generateSmartFallback(title, price, 'no_api_key'));
+        }
+
+        try {
+            const genAI = new GoogleGenerativeAI(API_KEY);
+
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+            const prompt = `Você é um especialista em varejo para o app Radar da Oferta. 
+    Dados reais: Título "${title}" e Preço promocional R$ ${price}.
+    
+    Retorne APENAS um objeto JSON puro, sem markdown, sem explicações, seguindo este formato:
+    {
+      "description": "Uma frase de marketing curta (máx 128 caracteres) e apelativa com emojis",
+      "category": "Escolha a melhor chave desta lista: [adega, butcher, automotive, drinks, toys, fitness, frozen, electronics, pharmacy, dairy, florist, cleaning, hortifruti, grocery, bakery, stationery, fishmonger, petshop, pizzeria, restaurant, services, home_utilities, clothing]",
+      "originalPrice": Sugira um valor aleatório entre 10% e 60% acima de ${price},
+      "discount": O número inteiro representando a porcentagem de desconto calculada sobre o valor sugerido
+    }
+
+    Importante: Se o produto for um bolo ou pão, lembre-se que vencem de um dia para o outro, então a descrição deve focar em 'fresquinho' ou 'fornada de hoje'.`;
+
+            const result = await model.generateContent([
+                prompt,
+                { inlineData: { data: imageBase64, mimeType: mimeType || "image/jpeg" } }
+            ]);
+
+            const response = await result.response;
+
+            let text = response.text();
+
+            const cleanJson = text.replace(/```json/g, "")
+                .replace(/```/g, "")
+                .trim();
+
+            try {
+                return res.status(200).json(JSON.parse(cleanJson));
+            } catch (parseError) {
+                logger.error("Erro ao parsear JSON da IA:", cleanJson);
+                throw parseError;
+            }
+
+        } catch (sdkError) {
+            logger.warn("SDK falhou, tentando via Fetch manual...", sdkError.message);
+
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+
+            const fetchResponse = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: `Analise este produto: ${title}. Preço: ${price}. Retorne JSON puro.` },
+                            { inlineData: { mimeType: mimeType || "image/jpeg", data: imageBase64 } }
+                        ]
+                    }]
+                })
+            });
+
+            if (!fetchResponse.ok) throw new Error(`Fetch API Error: ${fetchResponse.status}`);
+
+            const data = await fetchResponse.json();
+            const rawText = data.candidates[0].content.parts[0].text;
+            const cleanFetchJson = rawText.replace(/```json/g, "")
+                .replace(/```/g, "")
+                .trim();
+
+            try {
+                return res.status(200).json(JSON.parse(cleanFetchJson));
+            } catch (parseError) {
+                logger.error("Erro ao parsear JSON da IA:", cleanFetchJson);
+                throw parseError;
+            }
+        }
+
+    } catch (error) {
+        logger.error("Todas as tentativas de IA falharam:", error.message);
+        return res.status(200).json(generateSmartFallback(title, price, 'ai_all_failed'));
+    }
+});
+
+function generateSmartFallback(title, price, reason) {
+    const titleLower = title.toLowerCase().trim();
+    const priceNum = parseFloat(price);
+
+    logger.info(`Gerando fallback inteligente (${reason}):`, { title, price: priceNum });
+
+    // ========================================
+    // 1. DETECTAR CATEGORIA INTELIGENTE
+    // ========================================
+    const categoryPatterns = [
+        // Padaria (prioridade alta - produtos perecíveis)
+        {
+            keywords: ['pão', 'bolo', 'torta', 'doce', 'rosca', 'croissant', 'sonho', 'bisnaga', 'frances', 'caseir'],
+            category: 'bakery',
+            emoji: '🥐',
+            freshness: true
+        },
+        // Açougue
+        {
+            keywords: ['carne', 'frango', 'peixe', 'bife', 'linguiça', 'salsicha', 'presunto', 'mortadela', 'bacon', 'costela', 'picanha'],
+            category: 'butcher',
+            emoji: '🥩'
+        },
+        // Hortifruti
+        {
+            keywords: ['fruta', 'verdura', 'legume', 'salada', 'tomate', 'cebola', 'alface', 'banana', 'maçã', 'laranja', 'abacaxi'],
+            category: 'hortifruti',
+            emoji: '🥦',
+            freshness: true
+        },
+        // Farmácia
+        {
+            keywords: ['remédio', 'medicamento', 'farmac', 'vitamina', 'suplemento', 'analgésico', 'xarope', 'cólica', 'gripe', 'dor'],
+            category: 'pharmacy',
+            emoji: '💊'
+        },
+        // Limpeza
+        {
+            keywords: ['sabão', 'detergente', 'desinfetante', 'limpeza', 'álcool', 'água sanitária', 'amaciante', 'lustra móvel', 'multiuso'],
+            category: 'cleaning',
+            emoji: '🧼'
+        },
+        // Laticínios
+        {
+            keywords: ['leite', 'queijo', 'iogurte', 'manteiga', 'requeijão', 'cream cheese', 'nata', 'iorgute'],
+            category: 'dairy',
+            emoji: '🧀',
+            freshness: true
+        },
+        // Bebidas
+        {
+            keywords: ['cerveja', 'vinho', 'refri', 'refrigerante', 'suco', 'água', 'whisky', 'vodka', 'energético', 'mate'],
+            category: 'drinks',
+            emoji: '🍷'
+        },
+        // Congelados
+        {
+            keywords: ['congelado', 'sorvete', 'pizza', 'lasanha', 'hambúrguer', 'nugget', 'batata frita'],
+            category: 'frozen',
+            emoji: '🧊'
+        },
+        // Padrão (grocery)
+        {
+            keywords: [],
+            category: 'grocery',
+            emoji: '🛒'
+        }
+    ];
+
+    let selectedCategory = categoryPatterns.find(pattern =>
+        pattern.keywords.some(keyword => titleLower.includes(keyword))
+    ) || categoryPatterns[categoryPatterns.length - 1]; // Último é grocery
+
+    // ========================================
+    // 2. GERAR DESCRIÇÃO CRIATIVA E VARIADA
+    // ========================================
+    const descriptions = {
+        bakery: [
+            "🥐 {title} fresquinho da fornada!",
+            "🍞 {title} quentinho direto do forno!",
+            "👨‍🍳 {title} artesanal - qualidade garantida!",
+            "🎯 {title} perfeito para o café da manhã!",
+            "⏰ {title} acabou de sair do forno!"
+        ],
+        hortifruti: [
+            "🥦 {title} fresquinhos colhidos hoje!",
+            "🌱 {title} natural e saudável!",
+            "👩‍🌾 {title} direto do produtor!",
+            "💚 {title} - qualidade premium!",
+            "🌿 {title} selecionados a mão!"
+        ],
+        butcher: [
+            "🥩 {title} - corte especial!",
+            "🔪 {title} selecionado com cuidado!",
+            "🏆 {title} de primeira qualidade!",
+            "👨‍🍳 {title} perfeito para o churrasco!",
+            "💪 {title} - proteína de qualidade!"
+        ],
+        pharmacy: [
+            "💊 {title} - cuide da sua saúde!",
+            "🏥 {title} com procedência garantida!",
+            "👨‍⚕️ {title} - qualidade farmacêutica!",
+            "❤️ {title} para seu bem-estar!",
+            "⚕️ {title} - laboratório certificado!"
+        ],
+        default: [
+            "🔥 {title} - Oferta imperdível!",
+            "🎯 {title} - Preço especial hoje!",
+            "⚡ {title} - Promoção relâmpago!",
+            "💰 {title} - Economize agora!",
+            "🎉 {title} - Oferta exclusiva!"
+        ]
+    };
+
+    // Escolher descrição aleatória
+    const categoryKey = selectedCategory.category in descriptions
+        ? selectedCategory.category
+        : 'default';
+
+    const availableDescs = descriptions[categoryKey];
+    const randomDesc = availableDescs[Math.floor(Math.random() * availableDescs.length)];
+
+    // Substituir {title} pelo título real (truncado se necessário)
+    let finalTitle = title;
+    if (title.length > 25) {
+        finalTitle = title.substring(0, 22) + '...';
+    }
+
+    let description = randomDesc.replace('{title}', finalTitle);
+
+    // Se for produto fresco, adicionar ênfase
+    if (selectedCategory.freshness) {
+        const freshnessPhrases = [' Fresco!', ' Hoje mesmo!', ' Aproveite!', ' Qualidade!'];
+        const randomPhrase = freshnessPhrases[Math.floor(Math.random() * freshnessPhrases.length)];
+        description = description.replace('!', randomPhrase + '!');
+    }
+
+    // Garantir que não ultrapasse 80 caracteres
+    if (description.length > 80) {
+        description = description.substring(0, 77) + '...';
+    }
+
+    // ========================================
+    // 3. CALCULAR PREÇO ORIGINAL REALISTA
+    // ========================================
+    // Diferentes margens por categoria
+    const marginRanges = {
+        bakery: { min: 1.15, max: 1.40 },      // 15-40% - produtos com margem baixa
+        hortifruti: { min: 1.20, max: 1.50 },   // 20-50% - produtos perecíveis
+        butcher: { min: 1.25, max: 1.60 },      // 25-60% - proteínas
+        pharmacy: { min: 1.30, max: 1.70 },     // 30-70% - medicamentos
+        electronics: { min: 1.40, max: 2.00 },  // 40-100% - eletrônicos
+        default: { min: 1.20, max: 1.60 }       // 20-60% - padrão
+    };
+
+    const range = marginRanges[selectedCategory.category] || marginRanges.default;
+    const margin = range.min + (Math.random() * (range.max - range.min));
+
+    // Arredondar para múltiplo de 0.10 (dezenas de centavos)
+    let originalPrice = priceNum * margin;
+    originalPrice = Math.ceil(originalPrice * 10) / 10; // Arredonda para cima em 0.10
+
+    // Garantir diferença mínima de 10% (evitar "desconto" de 1-2%)
+    if ((originalPrice - priceNum) / originalPrice < 0.10) {
+        originalPrice = priceNum * 1.15; // Força 15% de desconto mínimo
+    }
+
+    // Calcular desconto real
+    const discount = Math.round(((originalPrice - priceNum) / originalPrice) * 100);
+
+    // Garantir desconto mínimo de 5% e máximo de 70%
+    const finalDiscount = Math.min(Math.max(discount, 5), 70);
+
+    // Ajustar preço original se necessário
+    if (discount !== finalDiscount) {
+        originalPrice = priceNum / (1 - finalDiscount / 100);
+        originalPrice = Math.ceil(originalPrice * 10) / 10;
+    }
+
+    // ========================================
+    // 4. RETORNAR RESULTADO
+    // ========================================
+    return {
+        description: description,
+        category: selectedCategory.category,
+        originalPrice: originalPrice, // NÚMERO, não string
+        discount: finalDiscount,
+        fallbackReason: reason,
+        emoji: selectedCategory.emoji,
+        isFreshProduct: selectedCategory.freshness || false,
+        categoryDetected: selectedCategory.category !== 'grocery'
+    };
+}
 
 // ========================================
 // FUNÇÃO PRINCIPAL: Gerenciar Inscrições

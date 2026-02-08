@@ -9,10 +9,10 @@
   --success: #4caf50;
   --danger: #f44336;
   --warning: #ff9800;
-  --text-primary: #ffffff;
+  --text-primary: #f9fafb;
   --text-secondary: #94a3b8;
   --text-light: #9ca3af;
-  --divider: #e5e7eb;
+  --divider: #374151;
   --background: #0f172a;
   --surface: #1e293b;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -38,6 +38,29 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html[data-theme='light'] {
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --divider: #e5e7eb;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --background: #f8fafc;
+    --surface: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --divider: #e5e7eb;
+  }
+}
+
+.app-header,
+.bottom-nav {
+  background: var(--surface);
 }
 
 body {
@@ -960,7 +983,6 @@ body {
   }
 }
 
-/* Dark mode support (opcional) */
 @media (prefers-color-scheme: dark) {
   :root {
     --text-primary: #f9fafb;
@@ -970,13 +992,12 @@ body {
     --surface: #1f2937;
     --divider: #374151;
   }
-
   .app-header {
-    background: rgba(31, 41, 55, 0.95);
+    background: var(--surface);
   }
 
   .bottom-nav {
-    background: rgba(31, 41, 55, 0.95);
+    background: var(--surface);
   }
 }
 

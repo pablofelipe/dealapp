@@ -1164,9 +1164,195 @@ body {
   margin-left: 8px;
 }
 
-/* No merchant.css */
 .estoque-alerta {
   color: #ef4444;
   font-weight: bold;
   animation: pulse 2s infinite;
+}
+
+/* Estilo Mobile-First para Oferta Relâmpago */
+.flash-deal-container {
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.flash-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.flash-header h2 {
+  color: var(--primary-dark);
+  margin-bottom: 5px;
+  font-size: 1.5rem;
+}
+
+.flash-header p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.btn-camera {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f0f9ff;
+  border: 2px dashed var(--primary);
+  border-radius: 20px;
+  padding: 50px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.btn-camera:active {
+  transform: scale(0.98);
+  background: #e0f2fe;
+}
+
+.btn-camera .icon {
+  font-size: 3.5rem;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.btn-camera .text {
+  font-weight: bold;
+  color: var(--primary-dark);
+  font-size: 1.1rem;
+}
+
+.image-preview img {
+  width: 100%;
+  max-height: 250px;
+  object-fit: cover;
+  border-radius: 15px;
+  box-shadow: var(--shadow-md);
+  margin-top: 10px;
+}
+
+.flash-inputs {
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: var(--shadow-sm);
+  margin-top: 20px;
+}
+
+.btn-primary-big {
+  width: 100%;
+  padding: 18px;
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  margin-top: 10px;
+  transition: transform 0.2s;
+}
+
+.btn-primary-big:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+  #flash-deal-view {
+    padding-bottom: 100px;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#flash-preview img {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+
+/* Esconder a barra inferior no Desktop */
+.bottom-nav {
+  display: none;
+}
+
+/* Ajustes para Mobile (Telas até 768px) */
+@media (max-width: 768px) {
+  /* Esconde a sidebar lateral para ganhar espaço */
+  .sidebar {
+    display: none;
+  }
+
+  /* Faz o conteúdo ocupar a tela toda */
+  .main-layout {
+    display: block;
+    padding-bottom: 80px; /* Espaço para não cobrir o conteúdo com a barra */
+  }
+
+  /* Estiliza a Barra Inferior */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: white;
+    border-top: 1px solid #eee;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .bottom-nav .nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+  }
+
+  .bottom-nav .nav-btn.active {
+    color: var(--primary);
+  }
+
+  .bottom-nav .nav-btn small {
+    font-size: 0.7rem;
+    margin-top: 4px;
+  }
+
+  /* Destaque para o botão de Oferta Relâmpago */
+  .flash-special {
+    transform: translateY(-20px);
+  }
+
+  .flash-icon-circle {
+    background: var(--primary-gradient);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    border: 4px solid white;
+    box-shadow: var(--shadow-md);
+  }
 }

@@ -526,9 +526,19 @@ function switchTab(tab) {
   const allViews = document.querySelectorAll('.view, .deals-container, #coupons-section');
   allViews.forEach(view => view.classList.add('hidden'));
 
+  const filterWrapper = document.getElementById('filter-wrapper');
+
+  if (filterWrapper) {
+    filterWrapper.style.display = 'none';
+  }
+
   if (tab === 'deals') {
     dealsContainer?.classList.remove('hidden');
     loadNearbyDeals();
+
+    if (filterWrapper) {
+      filterWrapper.style.display = 'flex';
+    }
   }
   else if (tab === 'coupons') {
     const couponsSection = document.getElementById('coupons-section');

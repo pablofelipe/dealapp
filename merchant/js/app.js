@@ -40,6 +40,7 @@ function initializeApp() {
   setupDealFormWithMerchantData();
   initializeEditMerchant();
   initializeBadgeOnLoad();
+  setupFlashDealView();
 
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('ref');
@@ -168,6 +169,8 @@ function setupEventListeners() {
       showView('deals');
     }
   });
+
+  setupNavHighlight();
 }
 
 // NOVO: Configurar formulário de cadastro
@@ -482,9 +485,28 @@ window.showView = async function (viewName) {
     return;
   }
 
+  console.log(`🔍 showView chamada com viewName: "${viewName}"`);
+
+  // Mapeamento de nomes de view para IDs de elementos
+  const viewIdMap = {
+    'deals': 'view-deals',
+    'flash-deal-view': 'flash-deal-view', // ← Note que não tem 'view-' no início
+    'create-deal': 'view-create-deal',
+    'validate': 'view-validate',
+    'stats': 'view-stats',
+    'edit-merchant': 'view-edit-merchant'
+  };
+
+  // Se é a mesma view, ignorar
+  const targetViewId = viewIdMap[viewName] || `view-${viewName}`;
+
+  console.log(`🎯 Target View ID: ${targetViewId}`);
+
   // Se é a mesma view, ignorar
   const currentView = document.querySelector('.view.active');
-  if (currentView && currentView.id === `view-${viewName}`) {
+
+  if (currentView && currentView.id === targetViewId) {
+    console.log(`⚠️ Já está na view ${targetViewId}, ignorando...`);
     return;
   }
 
@@ -503,7 +525,13 @@ window.showView = async function (viewName) {
 
     // 3. Mostrar/ocultar views
     document.querySelectorAll('.view').forEach(v => {
-      v.classList.toggle('active', v.id === `view-${viewName}`);
+      const shouldBeActive = v.id === targetViewId;
+      v.classList.toggle('active', shouldBeActive);
+
+      // Log para debug
+      if (shouldBeActive) {
+        console.log(`✅ Ativando view: ${v.id}`);
+      }
     });
 
     // 4. Atualizar badge se necessário
@@ -963,3 +991,128 @@ function initializeBadgeOnLoad() {
 }
 
 export { currentUser, currentMerchant };
+
+
+// Dentro do setupEventListeners() no app.js
+const flashImageInput = document.getElementById('flash-image');
+if (flashImageInput) {
+  flashImageInput.addEventListener('change', function (e) {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      const preview = document.getElementById('flash-preview');
+      preview.innerHTML = `<img src="${event.target.result}" style="width: 100%; border-radius: 10px; margin-top: 10px;">`;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  });
+}
+
+// E vincule o clique do botão de publicar
+document.getElementById('btn-publish-flash')?.addEventListener('click', () => {
+  window.publishFlashDeal();
+});
+
+// No seu app.js, dentro de setupEventListeners ou onde você gerencia as views:
+
+function setupNavHighlight() {
+  const allNavButtons = document.querySelectorAll('.nav-btn');
+
+  allNavButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove a classe active de TODOS (sidebar e bottom nav)
+      allNavButtons.forEach(b => b.classList.remove('active'));
+
+      // Adiciona no que foi clicado
+      btn.classList.add('active');
+
+      // Pega o ID da view e muda a tela
+      const viewId = btn.getAttribute('data-view');
+      showView(viewId);
+    });
+  });
+}
+
+function setupFlashDealView() {
+  const flashDealView = document.getElementById('flash-deal-view');
+  if (!flashDealView) return;
+
+  console.log('⚡ Inicializando view Flash Deal');
+
+  // Configurar o input de imagem
+  const flashImageInput = document.getElementById('flash-image');
+  const flashPreview = document.getElementById('flash-preview');
+
+  if (flashImageInput && flashPreview) {
+    flashImageInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          flashPreview.innerHTML = `
+            <div style="margin-top: 10px;">
+              <img src="${event.target.result}" style="width: 100%; max-width: 300px; border-radius: 10px;">
+              <button type="button" onclick="clearFlashImage()" style="margin-top: 10px; padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                ✕ Remover Imagem
+              </button>
+            </div>
+          `;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  // Configurar botão de publicação
+  const publishBtn = document.getElementById('btn-publish-flash');
+  if (publishBtn) {
+    publishBtn.addEventListener('click', publishFlashDeal);
+  }
+}
+
+// Função para limpar a imagem flash
+window.clearFlashImage = function () {
+  const flashImageInput = document.getElementById('flash-image');
+  const flashPreview = document.getElementById('flash-preview');
+
+  if (flashImageInput) flashImageInput.value = '';
+  if (flashPreview) flashPreview.innerHTML = '';
+};
+
+// Função de publicação da oferta relâmpago
+async function publishFlashDeal() {
+  try {
+    const title = document.getElementById('flash-title').value;
+    const price = document.getElementById('flash-price').value;
+    const imageInput = document.getElementById('flash-image');
+
+    if (!title || !price) {
+      showNotification('error', 'Preencha título e preço!');
+      return;
+    }
+
+    if (!imageInput.files[0]) {
+      showNotification('error', 'Tire uma foto do produto!');
+      return;
+    }
+
+    showLoading(true);
+
+    // Aqui você implementaria a lógica de upload
+    // Por enquanto, só uma simulação
+    setTimeout(() => {
+      showLoading(false);
+      showNotification('success', '⚡ Oferta Relâmpago publicada com sucesso!');
+
+      // Limpar formulário
+      document.getElementById('flash-title').value = '';
+      document.getElementById('flash-price').value = '';
+      clearFlashImage();
+
+      // Voltar para as ofertas
+      showView('deals');
+    }, 1500);
+
+  } catch (error) {
+    showLoading(false);
+    showNotification('error', 'Erro ao publicar oferta: ' + error.message);
+  }
+}

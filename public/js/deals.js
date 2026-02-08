@@ -298,6 +298,9 @@ function createDealCard(deal) {
   const categoryName = CATEGORY_LABELS[deal.category] || deal.category;
   const categoryEmoji = CATEGORY_EMOJIS[deal.category] || '🏷️';
 
+  const precoOriginal = deal.originalPrice ? deal.originalPrice.toFixed(2) : "0.00";
+  const precoOferta = deal.dealPrice ? deal.dealPrice.toFixed(2) : (deal.price ? deal.price.toFixed(2) : "0.00");
+
   card.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/300x200'}" alt="${deal.title}">
     <div class="deal-info">
@@ -314,9 +317,9 @@ function createDealCard(deal) {
       </div>
       
       <div class="deal-pricing">
-        <span class="original-price">R$ ${deal.originalPrice.toFixed(2)}</span>
-        <span class="deal-price">R$ ${deal.dealPrice.toFixed(2)}</span>
-        <span class="discount-badge">${deal.discount}% OFF</span>
+        <span class="original-price">R$ ${precoOriginal}</span>
+        <span class="deal-price">R$ ${precoOferta}</span>
+        <span class="discount-badge">${deal.discount || 0}% OFF</span>
       </div>
       
       <div class="deal-stock">
@@ -348,6 +351,9 @@ function showDealModal(deal) {
     ? `<span>♾️ Estoque Ilimitado</span>`
     : `<span>📦 Apenas ${deal.stockAvailable} unidades disponíveis</span>`;
 
+  const precoOriginal = deal.originalPrice ? deal.originalPrice.toFixed(2) : "0.00";
+  const precoOferta = deal.dealPrice ? deal.dealPrice.toFixed(2) : (deal.price ? deal.price.toFixed(2) : "0.00");
+
   details.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/500x300'}" alt="${deal.title}">
     <h2>${deal.title}</h2>
@@ -357,9 +363,9 @@ function showDealModal(deal) {
     </div>
     <p style="margin-bottom: 16px;">${deal.description}</p>
     <div class="price-info" style="margin-bottom: 16px;">
-      <span class="original" style="text-decoration: line-through; color: #94a3b8;">De R$ ${deal.originalPrice.toFixed(2)}</span>
-      <span class="current" style="font-size: 28px; font-weight: bold; color: #2196F3;">Por R$ ${deal.dealPrice.toFixed(2)}</span>
-      <span class="discount" style="background: #ff5722; color: white; padding: 4px 12px; border-radius: 6px; font-weight: bold;">${deal.discount}% OFF</span>
+      <span class="original" style="text-decoration: line-through; color: #94a3b8;">De R$ ${precoOriginal}</span>
+      <span class="current" style="font-size: 28px; font-weight: bold; color: #2196F3;">Por R$ ${precoOferta}</span>
+      <span class="discount" style="background: #ff5722; color: white; padding: 4px 12px; border-radius: 6px; font-weight: bold;">${deal.discount || 0}% OFF</span>
     </div>
     <p class="stock-info" style="color: #64748b; margin-bottom: 12px;">${stockDisplay}</p>
     ${deliveryInfo.length > 0 ? `<p style="color: #64748b; margin-bottom: 12px;">✅ ${deliveryInfo.join(' • ')}</p>` : ''}

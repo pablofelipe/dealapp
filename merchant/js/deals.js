@@ -147,6 +147,9 @@ function createDealItem(deal) {
     ? `<span class="badge-permanent">♾️ Oferta por tempo indeterminado</span>`
     : `📅 ${isExpired ? 'Expirado' : 'Até ' + expiresAt.toLocaleDateString('pt-BR')}`;
 
+
+  const precoOferta = deal.dealPrice ? deal.dealPrice.toFixed(2) : (deal.price ? deal.price.toFixed(2) : "0.00");
+
   item.innerHTML = `
     <img src="${deal.imageUrl || 'https://via.placeholder.com/120'}" alt="${deal.title}">
     <div class="deal-item-content">
@@ -156,7 +159,7 @@ function createDealItem(deal) {
         📍 ${locationInfo}
       </div>
       <div class="deal-item-meta">
-        <span>💰 R$ ${deal.dealPrice.toFixed(2)} (${deal.discount}% OFF)</span>
+        <span>💰 R$ ${precoOferta} (${deal.discount || 0}% OFF)</span>
         <span style="color: ${isLowStock ? '#f59e0b' : '#10b981'}">
           <div class="deal-stock">${stockDisplay}</div>
         </span>
@@ -839,3 +842,110 @@ window.resetDealForm = function () {
     showView('deals'); // Volta para a listagem
   }
 };
+
+// Função para publicar a Oferta Relâmpago (24h)
+export async function publishFlashDeal() {
+  const title = document.getElementById('flash-title').value;
+  const price = parseFloat(document.getElementById('flash-price').value);
+  const imageFile = document.getElementById('flash-image').files[0];
+  const merchantId = auth.currentUser?.uid;
+
+  if (!merchantId || !title || !price || !imageFile) {
+    alert('Preencha o título, preço e tire uma foto!');
+    return;
+  }
+
+  try {
+    showNotification('info', '🤖 IA do Radar analisando seu produto...');
+
+    // --- PASSO 1: ENVIAR PARA AI ---
+    // Aqui você chama sua função que integra com a API Key
+    const aiSugestion = await analyzeOfferWithAI(imageFile, title, price);
+
+    console.log('💡 Sugestões da IA:', aiSugestion);
+
+    // --- PASSO 2: UPLOAD DA IMAGEM ---
+    const storageRef = ref(storage, `deals/${merchantId}_${Date.now()}`);
+    const uploadResult = await uploadBytes(storageRef, imageFile);
+    const imageUrl = await getDownloadURL(uploadResult.ref);
+
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    const merchantDoc = await getDoc(doc(db, 'merchants', merchantId));
+    const merchantData = merchantDoc.exists() ? merchantDoc.data() : {};
+
+    const flashDeal = {
+      title: title,
+      dealPrice: price,
+      originalPrice: parseFloat(aiSugestion.originalPrice) || price * 1.2, // IA sugere ou calculamos
+      discount: parseFloat(aiSugestion.discount) || 20,
+      imageUrl: imageUrl,
+      merchantId: merchantId,
+      merchantName: merchantData.tradingName || 'Lojista',
+      merchantLocation: merchantData.location || null,
+      category: aiSugestion.category || 'other', // IA define a categoria!
+      status: 'active',
+      isFlashDeal: true,
+      isUnlimited: true,
+      stockTotal: 999999,
+      stockAvailable: 999999,
+      createdAt: Timestamp.now(),
+      expiresAt: Timestamp.fromDate(expiresAt),
+      description: aiSugestion.description || "Oferta fresquinha no Radar!"
+    };
+
+    await addDoc(collection(db, 'deals'), flashDeal);
+    showNotification('success', '🚀 Publicado com ajuda da IA!');
+
+    // ... reset do form ...
+  } catch (error) {
+    console.error('❌ Erro:', error);
+  }
+}
+
+window.publishFlashDeal = publishFlashDeal;
+
+async function analyzeOfferWithAI(imageFile, title, price) {
+  try {
+    // 1. Converter imagem para base64
+    const base64Data = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(imageFile);
+    });
+
+    // 2. Chamar a sua Cloud Function (substitua pela URL que o Firebase te der após o deploy)
+    const CLOUD_FUNCTION_URL = 'https://processofferwithai-seu-id.a.run.app';
+
+    const LOCAL_URL = "http://127.0.0.1:5001/the-dealapp/us-central1/processOfferWithAI";
+
+    const response = await fetch(LOCAL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imageBase64: base64Data,
+        title: title,
+        price: price,
+        mimeType: imageFile.type
+      })
+    });
+
+    if (!response.ok) throw new Error('Falha na Cloud Function');
+
+    const result = await response.json();
+    console.log("🤖 Resposta da IA (via Cloud Function):", result);
+    return result;
+
+  } catch (error) {
+    console.error("❌ Erro ao processar IA:", error);
+    // Fallback de segurança
+    const fakeOriginal = Math.round(price * 1.3);
+    return {
+      description: `${title} em oferta especial!`,
+      category: "grocery",
+      originalPrice: fakeOriginal,
+      discount: Math.round(((fakeOriginal - price) / fakeOriginal) * 100)
+    };
+  }
+}
