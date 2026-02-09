@@ -1378,3 +1378,43 @@ body {
 .bottom-nav {
   display: none; /* Nasce escondida */
 }
+
+.view-section {
+  padding-bottom: 120px !important;
+  box-sizing: border-box;
+}
+
+#deals-list,
+.deals-container {
+  padding-bottom: 100px !important;
+}
+
+.deal-item-actions {
+  display: flex !important;
+  justify-content: center !important; /* Centraliza horizontalmente */
+  gap: 12px !important; /* Espaço entre botões */
+  margin-top: 15px !important;
+  padding: 10px !important;
+  border-top: 1px solid #f1f5f9 !important;
+  width: 100% !important;
+}
+
+.deal-item-actions .btn-icon {
+  flex: 1 !important; /* Faz os botões dividirem o espaço */
+  max-width: 140px !important; /* Não deixa ficarem gigantescos em telas largas */
+  height: 44px !important; /* Altura ideal para o dedo (Apple/Google standard) */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  cursor: pointer !important;
+}
+
+/* Espaço de segurança no painel para o scroll não bater na nav */
+#panel {
+  padding-bottom: 120px !important;
+}
