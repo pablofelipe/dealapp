@@ -19,6 +19,27 @@ let authListeners = [];
 
 // ========== FUNÇÕES PÚBLICAS ==========
 
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  console.log('✅ PWA pronto para instalar');
+});
+
+// Função para disparar a instalação manualmente se precisar no vídeo
+export function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      }
+      deferredPrompt = null;
+    });
+  }
+}
+
 /**
  * Inicia o login com Google
  * @returns {Promise<User|null>} Usuário logado ou null em caso de erro

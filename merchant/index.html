@@ -397,6 +397,10 @@
             <span>⚙️</span>
             <span>Editar Cadastro</span>
           </button>
+          <button class="nav-btn logout-btn-nav" id="logout-btn">
+            <span>🚪</span>
+            Sair
+          </button>
         </nav>
 
         <div class="sidebar-footer">
@@ -404,7 +408,6 @@
             <img id="user-photo" class="avatar" alt="User" />
             <div>
               <p id="user-name">Carregando...</p>
-              <button id="logout-btn" class="btn-text">Sair</button>
             </div>
           </div>
         </div>
@@ -1153,12 +1156,12 @@
       type="module"
       src="/merchant/js/firebase-config.js?v=1.0.0"
     ></script>
-    <script type="module" src="/merchant/js/auth.js?v=1.0.0"></script>
-    <script type="module" src="/merchant/js/merchant.js?v=1.0.0"></script>
-    <script type="module" src="/merchant/js/edit-merchant.js?v=1.0.0"></script>
-    <script type="module" src="/merchant/js/deals.js?v=1.0.0"></script>
-    <script type="module" src="/merchant/js/coupons.js?v=1.0.0"></script>
-    <script type="module" src="/merchant/js/app.js?v=1.0.0"></script>
+    <script type="module" src="/merchant/js/auth.js?v=1.0.1"></script>
+    <script type="module" src="/merchant/js/merchant.js?v=1.0.1"></script>
+    <script type="module" src="/merchant/js/edit-merchant.js?v=1.0.1"></script>
+    <script type="module" src="/merchant/js/deals.js?v=1.0.1"></script>
+    <script type="module" src="/merchant/js/coupons.js?v=1.0.1"></script>
+    <script type="module" src="/merchant/js/app.js?v=1.0.1"></script>
 
     <nav class="bottom-nav">
       <button class="nav-btn active" data-view="deals">
@@ -1167,11 +1170,14 @@
       </button>
       <button class="nav-btn flash-special" data-view="flash-deal-view">
         <div class="flash-icon-circle">⚡</div>
-        <small>Rápida</small>
+        <small>Relâmpago</small>
       </button>
       <button class="nav-btn" data-view="validate">
         <span>✅</span>
-        <small>Validar Cupom</small>
+        <small>Validar</small>
+      </button>
+      <button class="nav-btn logout-btn-nav" id="logout-btn">
+        <span>🚪</span><small>Sair</small>
       </button>
     </nav>
   </body>

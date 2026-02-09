@@ -117,56 +117,60 @@ function debounce(func, wait) {
 // ========== SETUP DE EVENTOS ==========
 
 function setupEventListeners() {
-  // Login com Google
-  eventListenersManager.add(
-    googleLoginBtn,
-    'click',
-    async () => {
+  // 1. Login com Google
+  if (googleLoginBtn) {
+    eventListenersManager.add(googleLoginBtn, 'click', async () => {
       try {
         showLoading(true);
         const user = await loginWithGoogle();
-        if (user) {
-          await handleNewLogin(user);
-        }
+        if (user) await handleNewLogin(user);
       } catch (error) {
         console.error('❌ Erro no login:', error);
         showNotification('error', 'Erro ao fazer login. Tente novamente.');
       } finally {
         showLoading(false);
       }
-    }
-  );
+    });
+  }
 
-  // Logout
-  eventListenersManager.add(
-    logoutBtn,
-    'click',
-    async () => {
-      try {
-        await logout();
-        showLoginScreen();
-      } catch (error) {
-        console.error('❌ Erro no logout:', error);
+  // 2. Navegação Unificada (Incluindo Logout)
+  // Usamos delegação de eventos na bottom-nav para ser mais eficiente
+  const bottomNav = document.querySelector('.bottom-nav');
+  if (bottomNav) {
+    eventListenersManager.add(bottomNav, 'click', async (e) => {
+      const btn = e.target.closest('.nav-btn'); // Pega o botão mesmo clicando no ícone/span
+      if (!btn) return;
+
+      // Caso especial: Botão de Sair
+      if (btn.id === 'logout-btn' || btn.classList.contains('logout-btn-nav')) {
+        if (confirm('Deseja realmente sair do Radar?')) {
+          try {
+            await logout();
+            window.location.reload(); // Limpa estado e volta pro login
+          } catch (error) {
+            console.error('❌ Erro no logout:', error);
+          }
+        }
+        return;
       }
-    }
-  );
 
-  // Navegação do painel
-  navButtons.forEach(btn => {
-    eventListenersManager.add(
-      btn,
-      'click',
-      () => {
-        const view = btn.dataset.view;
-        showView(view);
-      }
-    );
-  });
+      // Navegação normal
+      const view = btn.dataset.view;
+      if (view) showView(view);
+    });
+  }
 
-  // Botão voltar (usando delegação de eventos)
-  document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('btn-back')) {
+  // 3. Cliques Globais (Botão Voltar e Fechar Modais)
+  eventListenersManager.add(document, 'click', (e) => {
+    // Botão Voltar
+    if (e.target.closest('.btn-back')) {
       showView('deals');
+      return;
+    }
+
+    // Fechar modais (se houver um fundo clicável)
+    if (e.target.classList.contains('modal')) {
+      closeAllModals();
     }
   });
 
@@ -336,6 +340,10 @@ async function handleAuthStateChange(user) {
   showLoading(false);
   console.log('🔐 Estado de autenticação alterado:', user?.email);
 
+  const navContainer = document.querySelector('.bottom-nav');
+
+  if (navContainer) navContainer.style.display = 'none';
+
   if (user) {
     currentUser = user;
     console.log('👤 Usuário atual:', user.email);
@@ -349,11 +357,21 @@ async function handleAuthStateChange(user) {
         // Tem cadastro completo
         currentMerchant = merchantProfile;
 
+        loginScreen.style.display = 'none';
+        registerScreen.style.display = 'none';
+        panel.style.display = 'block';
+
+        if (navContainer) navContainer.style.display = 'flex';
+
         //updateMerchantInfo(merchantProfile);
 
         showPanelScreen();
         await loadInitialData();
       } else {
+        loginScreen.style.display = 'none';
+        registerScreen.style.display = 'block';
+        panel.style.display = 'none';
+
         // Primeiro acesso - mostrar cadastro
         console.log('📝 Primeiro acesso, mostrando cadastro');
         showRegisterScreen();
@@ -369,6 +387,10 @@ async function handleAuthStateChange(user) {
     // Limpar cache ao deslogar
     localStorage.removeItem('currentMerchant');
     window.currentMerchant = null;
+
+    loginScreen.style.display = 'flex';
+    registerScreen.style.display = 'none';
+    panel.style.display = 'none';
 
     showLoginScreen();
   }
@@ -490,7 +512,7 @@ window.showView = async function (viewName) {
   // Mapeamento de nomes de view para IDs de elementos
   const viewIdMap = {
     'deals': 'view-deals',
-    'flash-deal-view': 'flash-deal-view', // ← Note que não tem 'view-' no início
+    'flash-deal-view': 'flash-deal-view',
     'create-deal': 'view-create-deal',
     'validate': 'view-validate',
     'stats': 'view-stats',
@@ -953,7 +975,7 @@ function showPanelScreen() {
 
   // Atualizar informações do usuário
   if (currentUser) {
-    userPhoto.src = currentUser.photoURL || '/public/assets/icons/default-avatar.png';
+    userPhoto.src = currentUser.photoURL || '/public/assets/default-avatar.jpg';
     userName.textContent = currentUser.displayName || currentUser.email || 'Usuário';
   }
 

@@ -1337,22 +1337,44 @@ body {
     margin-top: 4px;
   }
 
-  /* Destaque para o botão de Oferta Relâmpago */
   .flash-special {
-    transform: translateY(-20px);
+    transform: none;
   }
 
   .flash-icon-circle {
     background: var(--primary-gradient);
-    width: 50px;
-    height: 50px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-bottom: 4px;
+    font-size: 1rem;
     color: white;
     font-size: 1.5rem;
     border: 4px solid white;
     box-shadow: var(--shadow-md);
   }
+}
+
+/* Garante que os 4 botões caibam bem no mobile */
+.bottom-nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Divide em 4 colunas iguais */
+  background: var(--surface);
+  border-top: 1px solid var(--divider);
+}
+
+.logout-btn-nav span {
+  filter: grayscale(1); /* Deixa o emoji de porta discreto */
+}
+
+.logout-btn-nav:active span {
+  filter: none;
+  color: var(--danger); /* Cor de alerta ao clicar */
+}
+
+.bottom-nav {
+  display: none; /* Nasce escondida */
 }
