@@ -368,7 +368,6 @@ exports.onNewDealNotify = functions.firestore
 
             console.log(`📡 Enviando para tópico: ${category}`);
 
-            // ⭐ PAYLOAD CORRIGIDO - SEM TTL em notification
             const message = {
                 notification: {
                     title: `🏷️ ${deal.title || 'Nova Oferta!'}`,
@@ -380,9 +379,7 @@ exports.onNewDealNotify = functions.firestore
                     url: `/?deal=${dealId}`,
                     timestamp: Date.now().toString()
                 },
-                // ⭐ Configuração Android CORRIGIDA
                 android: {
-                    // ⭐ TTL aqui, não em notification
                     ttl: 86400000, // 24 horas em milissegundos
                     priority: 'high',
                     notification: {

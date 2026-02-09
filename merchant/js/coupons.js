@@ -293,8 +293,6 @@ export async function loadStats(merchantId) {
     if (dealIds.length > 0) {
       const couponsRef = collection(db, 'coupons');
 
-      // Firestore não suporta 'in' com arrays grandes, então vamos buscar todos
-      // Em produção, você deveria fazer isso em batches ou via Cloud Function
       const allCouponsSnapshot = await getDocs(couponsRef);
 
       allCouponsSnapshot.docs.forEach(doc => {

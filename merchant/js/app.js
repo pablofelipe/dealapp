@@ -731,7 +731,7 @@ async function loadInitialData() {
   }
 }
 
-// NOVO: Validação do formulário de cadastro
+// Validação do formulário de cadastro
 function validateRegisterForm(data) {
   const requiredFields = [
     data.cnpj,
@@ -753,7 +753,7 @@ function validateRegisterForm(data) {
   return requiredFields.every(field => field && field.trim().length > 0);
 }
 
-// NOVO: Validação de CNPJ
+// Validação de CNPJ
 function validateCNPJ(cnpj) {
   cnpj = cnpj.replace(/[^\d]+/g, '');
 
@@ -793,7 +793,7 @@ function validateCNPJ(cnpj) {
   return true;
 }
 
-// NOVO: Sistema de notificações
+// Sistema de notificações
 function showNotification(type, message) {
   // Remove notificações anteriores
   const existing = document.querySelector('.app-notification');
@@ -1006,12 +1006,10 @@ if (flashImageInput) {
   });
 }
 
-// E vincule o clique do botão de publicar
+// Vincule o clique do botão de publicar
 document.getElementById('btn-publish-flash')?.addEventListener('click', () => {
   window.publishFlashDeal();
 });
-
-// No seu app.js, dentro de setupEventListeners ou onde você gerencia as views:
 
 function setupNavHighlight() {
   const allNavButtons = document.querySelectorAll('.nav-btn');
@@ -1096,8 +1094,7 @@ async function publishFlashDeal() {
 
     showLoading(true);
 
-    // Aqui você implementaria a lógica de upload
-    // Por enquanto, só uma simulação
+    // lógica de upload
     setTimeout(() => {
       showLoading(false);
       showNotification('success', '⚡ Oferta Relâmpago publicada com sucesso!');

@@ -859,7 +859,6 @@ export async function publishFlashDeal() {
     showNotification('info', '🤖 IA do Radar analisando seu produto...');
 
     // --- PASSO 1: ENVIAR PARA AI ---
-    // Aqui você chama sua função que integra com a API Key
     const aiSugestion = await analyzeOfferWithAI(imageFile, title, price);
 
     console.log('💡 Sugestões da IA:', aiSugestion);
@@ -878,13 +877,13 @@ export async function publishFlashDeal() {
     const flashDeal = {
       title: title,
       dealPrice: price,
-      originalPrice: parseFloat(aiSugestion.originalPrice) || price * 1.2, // IA sugere ou calculamos
+      originalPrice: parseFloat(aiSugestion.originalPrice) || price * 1.2,
       discount: parseFloat(aiSugestion.discount) || 20,
       imageUrl: imageUrl,
       merchantId: merchantId,
       merchantName: merchantData.tradingName || 'Lojista',
       merchantLocation: merchantData.location || null,
-      category: aiSugestion.category || 'other', // IA define a categoria!
+      category: aiSugestion.category || 'other',
       status: 'active',
       isFlashDeal: true,
       isUnlimited: true,
@@ -915,12 +914,14 @@ async function analyzeOfferWithAI(imageFile, title, price) {
       reader.readAsDataURL(imageFile);
     });
 
-    // 2. Chamar a sua Cloud Function (substitua pela URL que o Firebase te der após o deploy)
-    const CLOUD_FUNCTION_URL = 'https://processofferwithai-seu-id.a.run.app';
+    // Detecta se está rodando localmente (localhost ou 127.0.0.1)
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    const LOCAL_URL = "http://127.0.0.1:5001/the-dealapp/us-central1/processOfferWithAI";
+    const CLOUD_FUNCTION_URL = isLocal
+      ? "http://127.0.0.1:5001/the-dealapp/us-central1/processOfferWithAI"
+      : "https://us-central1-the-dealapp.cloudfunctions.net/processOfferWithAI";
 
-    const response = await fetch(LOCAL_URL, {
+    const response = await fetch(CLOUD_FUNCTION_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

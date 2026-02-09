@@ -190,7 +190,7 @@ async function syncInterests() {
           localStorage.setItem('userInterests', JSON.stringify(userData.interests));
         }
 
-        // ✅ Sincronizar notificações - Firestore TEM PRIORIDADE
+        // Sincronizar notificações - Firestore TEM PRIORIDADE
         let notificationsEnabled = false;
 
         // Primeiro tenta do Firestore
@@ -313,7 +313,7 @@ async function handleAuthStateChange(user) {
     await requestLocationAndLoadDeals();
     await loadMyCoupons();
 
-    // ✅ INICIALIZAÇÃO AUTOMÁTICA DAS NOTIFICAÇÕES
+    // INICIALIZAÇÃO AUTOMÁTICA DAS NOTIFICAÇÕES
     await initializeUserNotifications(user);
 
   } else {
@@ -356,7 +356,6 @@ async function initializeUserNotifications(user) {
           console.log('✅ Token FCM já existe:', token.substring(0, 20) + '...');
         }
 
-        // 🔥 AQUI estava faltando
         console.log('🔁 Sincronizando tópicos com FCM...');
         await syncTopicSubscriptions(token);
       }

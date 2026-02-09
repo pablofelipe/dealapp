@@ -317,7 +317,6 @@
           try {
             console.log('🚀 Iniciando registro de Service Workers...');
 
-            // ⭐ IMPORTANTE: Desregistrar SWs antigos primeiro
             const registrations =
               await navigator.serviceWorker.getRegistrations();
             for (const registration of registrations) {
@@ -325,10 +324,8 @@
               await registration.unregister();
             }
 
-            // Aguardar um pouco
             await new Promise((resolve) => setTimeout(resolve, 500));
 
-            // ⭐ 1. Registrar Firebase Messaging SW PRIMEIRO (mais importante)
             const firebaseSW = await navigator.serviceWorker.register(
               '/firebase-messaging-sw.js',
               {
@@ -338,11 +335,10 @@
             );
             console.log('✅ Firebase SW registrado:', firebaseSW.scope);
 
-            // Aguardar ativação
             await navigator.serviceWorker.ready;
             console.log('✅ Firebase SW ativo e pronto!');
 
-            // ⭐ 2. Registrar SW Principal (cache e PWA)
+            // 2. Registrar SW Principal (cache e PWA)
             // NOTA: Não precisa de segundo SW se o Firebase SW já trata tudo
             // Mas se quiser cache separado, pode manter
             /*
