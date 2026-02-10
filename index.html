@@ -104,12 +104,83 @@
       </div>
     </section>
 
-    <footer class="main-footer">
-      <div class="container">
-        <p>
-          &copy; 2026 Radar da Oferta - Fortalecendo o comércio do seu bairro
-        </p>
-      </div>
-    </footer>
+    <!-- Ícone do WhatsApp Flutuante -->
+    <a
+      href="javascript:void(0)"
+      class="whatsapp-float"
+      aria-label="Conversar no WhatsApp (abre em nova janela)"
+      title="Fale conosco pelo WhatsApp"
+    >
+      <img
+        src="./public/assets/whatsapp-icon.png"
+        alt="WhatsApp"
+        width="60"
+        height="60"
+      />
+    </a>
+
+    <style>
+      .whatsapp-float {
+        position: fixed;
+        bottom: 80px; /* Ajustado para não cobrir a navegação */
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        background-color: #25d366;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        z-index: 9999;
+        transition: all 0.3s ease;
+        text-decoration: none;
+      }
+
+      .whatsapp-float:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(37, 211, 102, 0.4);
+      }
+
+      .whatsapp-float img {
+        width: 35px;
+        height: 35px;
+        filter: brightness(0) invert(1);
+      }
+
+      /* Em telas menores, ajustar posição */
+      @media (max-width: 768px) {
+        .whatsapp-float {
+          bottom: 90px; /* Acima da navegação inferior */
+          right: 15px;
+          width: 56px;
+          height: 56px;
+        }
+
+        .whatsapp-float img {
+          width: 32px;
+          height: 32px;
+        }
+      }
+    </style>
+
+    <!-- Script para WhatsApp -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const whatsappBtn = document.querySelector('.whatsapp-float');
+        if (whatsappBtn) {
+          whatsappBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const mensagem = encodeURIComponent(
+              'Olá! Vi o site do Radar da Oferta e gostaria de saber mais sobre as ofertas do meu bairro.',
+            );
+            window.open(
+              `https://wa.me/5511985356029?text=${mensagem}`,
+              '_blank',
+            );
+          });
+        }
+      });
+    </script>
   </body>
 </html>
