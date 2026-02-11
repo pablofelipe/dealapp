@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página não encontrada | Radar da Oferta</title>
+    <link rel="stylesheet" href="style-landing.css">
+    <style>
+        .error-container {
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .error-code {
+            font-size: 8rem;
+            font-weight: 800;
+            color: var(--primary); /* Usando sua cor azul principal */
+            margin: 0;
+            line-height: 1;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .error-message {
+            margin: 20px 0 40px 0;
+        }
+
+        /* Reutilizando sua animação de hover do botão principal */
+        .btn-back {
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="container">
+        <div class="nav-flex">
+            <img src="public/assets/icons/icon-192.png" alt="Radar da Oferta" class="main-logo">
+        </div>
+    </nav>
+
+    <main class="container error-container">
+        <h1 class="error-code">404</h1>
+        
+        <div class="error-message">
+            <h2>Ops! Essa oferta "venceu" ou não existe.</h2>
+            <p>Parece que essa página que você tentou acessar não existe ou não está mais no nosso radar.</p>
+        </div>
+
+        <a href="/" class="btn-primary-large btn-back">Voltar para o Radar</a>
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; 2026 Radar da Oferta. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
