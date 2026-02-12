@@ -73,6 +73,10 @@ let currentFilter = 'all'; // Filtro atual
 export async function loadNearbyDeals() {
   console.log('🚀 Iniciando loadNearbyDeals com filtros do usuário');
   const maxRadius = getPreferredRadius();
+
+  let userInterests = ALL_IDS;
+  localStorage.setItem('userInterests', JSON.stringify(userInterests));
+  /*
   let userInterests = localStorage.getItem('userInterests');
 
   if (!userInterests) {
@@ -81,6 +85,7 @@ export async function loadNearbyDeals() {
   } else {
     userInterests = JSON.parse(userInterests);
   }
+  */
 
   const dealsList = document.getElementById('deals-list');
   if (dealsList) dealsList.innerHTML = '';
