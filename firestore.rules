@@ -33,8 +33,17 @@ service cloud.firestore {
     // Users - O dono acessa tudo, lojistas autenticados podem atualizar economia no resgate
     match /users/{userId} {
       allow read: if isAuthenticated(); // Lojista precisa ler para ver nome/foto do cliente
-      
-      allow write: if isAuthenticated();
+
+      // Dono: acesso total ao próprio documento
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+
+      // Lojista: só pode tocar os campos de economia gravados no resgate do cupom
+      allow create: if isAuthenticated() &&
+                       request.resource.data.keys()
+                         .hasOnly(['totalSavings', 'dealsPurchased', 'lastActivity']);
+      allow update: if isAuthenticated() &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['totalSavings', 'dealsPurchased', 'lastActivity']);
     }
     
     match /merchants/{userId} {
