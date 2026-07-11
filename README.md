@@ -1,113 +1,93 @@
-# DealApp - Location-Based Deals PWA
+# Radar da Oferta (DealApp)
 
-Progressive Web App (PWA) designed to deliver exclusive deals and coupons to users based on their proximity to local merchants and stores.
+[![Deploy](https://github.com/pablofelipe/dealapp/actions/workflows/firebase-hosting.yml/badge.svg)](https://github.com/pablofelipe/dealapp/actions/workflows/firebase-hosting.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-## 🚀 Technologies
+Progressive Web App that connects neighborhood merchants to nearby customers: merchants publish time-limited deals, customers discover them by proximity and redeem coupons in-store. Fully serverless on Firebase.
 
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **Backend**: Firebase Functions (TypeScript)
-- **Database**: Cloud Firestore
-- **Authentication**: Firebase Auth (Google)
-- **Hosting**: Firebase Hosting
-- **PWA**: Service Worker, Web App Manifest
+## Overview
 
-## ✨ Features
+The product has three surfaces:
 
-- 🔐 Google Authentication
-- 🏷️ Location-based deals listing
-- 🎫 Coupon generation and management
-- 📱 Installable as an app (PWA)
-- 🔄 Offline functionality (caching)
-- 🎨 Modern and responsive interface
-- 📍 Location-based deal delivery to nearby users
+- **Customer PWA** (`public/`) — browse nearby deals, generate coupons, receive push notifications for new offers in chosen categories. Installable, works offline.
+- **Merchant panel** (`merchant/`) — publish offers, validate and redeem customer coupons, track redemption stats.
+- **Landing page** (`index.html`) — public acquisition page.
 
-## 📋 Project Structure
+## AI-assisted offer creation
 
-```
+Publishing a good offer is the merchant's biggest friction point, so the merchant panel delegates it to a multimodal AI step (`processOfferWithAI` Cloud Function):
+
+1. The merchant uploads a product photo and types only the title and the promotional price.
+2. The function sends the image and the two fields to **Gemini 2.0 Flash**.
+3. The model returns structured JSON: a short marketing description, the product category (constrained to the app's category taxonomy), a suggested original price and the computed discount percentage.
+4. If the model call fails or no API key is configured, a deterministic fallback fills the same fields, so the publishing flow never blocks on the AI.
+
+The Gemini API key is stored as a Cloud Functions secret — it never ships to the client or the repository.
+
+## Features
+
+- Google sign-in (Firebase Auth)
+- Location-based deal discovery
+- Coupon generation, in-store validation and redemption tracking
+- AI-generated offer descriptions and categorization (Gemini, multimodal)
+- Push notifications on new deals, segmented by category topic (FCM)
+- Installable PWA with offline caching (service worker + manifest)
+- Firestore security rules with owner-based authorization, deployed via CI
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | HTML5, CSS3, JavaScript (ES6+), PWA (service worker, manifest) |
+| Backend | Firebase Cloud Functions (Node.js 20) |
+| AI | Gemini 2.0 Flash via `@google/generative-ai` (multimodal) |
+| Data | Cloud Firestore (+ security rules and composite indexes) |
+| Auth | Firebase Authentication (Google) |
+| Messaging | Firebase Cloud Messaging (topic-based) |
+| Hosting & CI | Firebase Hosting, GitHub Actions (deploys rules + hosting on push) |
+
+## Project structure
+
+```text
 dealapp/
-├── public/              # Main PWA frontend (HTML, CSS, JS)
-│   ├── index.html
-│   ├── manifest.json
-│   ├── sw.js           # Service Worker
-│   ├── css/
-│   ├── js/
-│   └── assets/
-├── merchant/           # Merchant panel frontend
-│   ├── index.html
-│   ├── css/
-│   └── js/
-├── functions/          # Cloud Functions (TypeScript)
-│   └── src/
-├── firestore/         # Firestore rules and indexes
-├── docs/              # Documentation
-└── .github/           # GitHub Actions (CI/CD)
+├── public/          # Customer PWA
+├── merchant/        # Merchant panel
+├── functions/       # Cloud Functions (AI offer assist, notifications, subscriptions)
+├── firestore.rules  # Security rules (owner-based access control)
+├── docs/            # Setup guide and PWA feature notes
+├── .github/         # CI: Firestore rules + Hosting deploy on every push
+└── index.html       # Landing page
 ```
 
-## 🛠️ Initial Setup
-
-See the complete guide at [docs/setup.md](docs/setup.md)
-
-### Quick Steps
-
-1. **Install dependencies**:
-   ```bash
-   cd functions
-   npm install
-   ```
-
-2. **Configure Firebase**:
-   - Edit `public/js/firebase-config.js` with your credentials
-   - Configure Authentication in Firebase Console
-
-3. **Deploy**:
-   ```bash
-   firebase deploy
-   ```
-
-## 🧪 Testing
-
-### Firebase Console
-
-Access the Firebase Console to manage your project:
-- [Firebase Console](https://console.firebase.google.com/)
-
-### Local Development
-
-To test the application locally before deploying:
+## Running locally
 
 ```bash
-firebase serve --only hosting --project the-dealapp
+cd functions && npm install && cd ..
+firebase serve --only hosting
 ```
 
-Once the server is running, you can access:
+- Customer PWA: http://localhost:5000/public/
+- Merchant panel: http://localhost:5000/merchant/
 
-- **Main PWA**: [http://localhost:5000/public/](http://localhost:5000/public/)
-- **Merchant Panel**: [http://localhost:5000/merchant/](http://localhost:5000/merchant/)
+Firebase project credentials go in `public/js/firebase-config.js` (web app config — public by design). The Gemini key is configured once as a function secret:
 
-### Testing Guidelines
+```bash
+firebase functions:secrets:set GEMINI_API_KEY
+```
 
-1. **Firebase Console**: Use the Firebase Console to monitor authentication, database operations, and view logs
-2. **Local Testing**: Always test changes locally using `firebase serve` before deploying
-3. **Both Interfaces**: Test both the user-facing PWA (`/public/`) and the merchant panel (`/merchant/`) to ensure full functionality
+## Deploy
 
-## 📖 Documentation
+Pushes to `main` deploy Firestore rules and Hosting automatically through GitHub Actions. Manual deploy:
 
-- [Setup Guide](docs/setup.md) - Detailed configuration
-- [PWA Features](docs/pwa-features.md) - PWA functionalities
+```bash
+firebase deploy
+```
 
-## 🎯 Next Steps
+## Documentation
 
-1. Add PWA icons in `public/assets/icons/`
-   - `icon-192.png` (192x192 pixels)
-   - `icon-512.png` (512x512 pixels)
+- [Setup guide](docs/setup.md)
+- [PWA features](docs/pwa-features.md)
 
-2. Configure Firebase credentials in `public/js/firebase-config.js`
+## License
 
-3. Deploy the project:
-   ```bash
-   firebase deploy
-   ```
-
-## 📝 License
-
-All rights reserved.
+Licensed under the [Apache License 2.0](LICENSE).
