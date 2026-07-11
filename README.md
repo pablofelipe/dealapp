@@ -110,4 +110,4 @@ Once the server is running, you can access:
 
 ## 📝 License
 
-This project is private.
+All rights reserved.
