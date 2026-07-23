@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dealapp-v1';
+const CACHE_NAME = 'dealapp-v2';
 const urlsToCache = [
   '/',
   '/index.html',

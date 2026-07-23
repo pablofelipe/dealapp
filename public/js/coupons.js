@@ -1,19 +1,29 @@
 import { db, auth } from './firebase-config.js';
 import {
   collection,
-  addDoc,
   doc,
   getDoc,
-  updateDoc,
   query,
   where,
-  getDocs,
-  Timestamp,
-  increment
+  getDocs
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
+
+const COUPON_ERROR_MESSAGES = {
+  'failed-precondition': 'Esta oferta não está mais disponível (esgotada ou expirada).',
+  'not-found': 'Oferta não encontrada.',
+  'unauthenticated': 'Você precisa estar logado.',
+};
+
+function mapErrorToMessage(error) {
+  return COUPON_ERROR_MESSAGES[error.code] || ('Erro ao gerar cupom: ' + error.message);
+}
 
 /**
- * Gerar cupom para uma oferta
+ * Gerar cupom para uma oferta.
+ * A validação de estoque/expiração e a baixa de estoque são feitas pela Cloud Function
+ * `generateCoupon` (server-authoritative, transação atômica) - este arquivo só chama a função
+ * e mostra o resultado.
  */
 export async function generateCoupon(dealId) {
   try {
@@ -25,49 +35,10 @@ export async function generateCoupon(dealId) {
 
     console.log('🎫 Gerando cupom para deal:', dealId);
 
-    // Buscar deal
-    const dealRef = doc(db, 'deals', dealId);
-    const dealDoc = await getDoc(dealRef);
-
-    if (!dealDoc.exists()) {
-      alert('❌ Oferta não encontrada');
-      return;
-    }
-
-    const deal = dealDoc.data();
-
-    // Verificar estoque
-    if (deal.stockAvailable <= 0) {
-      alert('❌ Estoque esgotado');
-      return;
-    }
-
-    // Verificar expiração
-    if (deal.expiresAt.toDate() <= new Date()) {
-      alert('❌ Oferta expirada');
-      return;
-    }
-
-    // Gerar código de 6 dígitos
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Criar cupom
-    const couponData = {
-      code,
-      dealId,
-      userId: user.uid,
-      status: 'pending',
-      generatedAt: Timestamp.now(),
-      expiresAt: deal.expiresAt,
-      redeemedAt: null
-    };
-
-    const couponRef = await addDoc(collection(db, 'coupons'), couponData);
-
-    // Decrementar estoque
-    await updateDoc(dealRef, {
-      stockAvailable: increment(-1)
-    });
+    const functions = getFunctions();
+    const call = httpsCallable(functions, 'generateCoupon');
+    const result = await call({ dealId });
+    const { id, code } = result.data;
 
     alert(`✅ Cupom gerado com sucesso!\n\nCódigo: ${code}\n\nMostre este código ao estabelecimento.`);
 
@@ -75,14 +46,11 @@ export async function generateCoupon(dealId) {
     await loadMyCoupons();
     closeModal();
 
-    return {
-      success: true,
-      coupon: { id: couponRef.id, code, ...couponData }
-    };
+    return { success: true, coupon: { id, code } };
 
   } catch (error) {
     console.error('❌ Erro ao gerar cupom:', error);
-    alert('❌ Erro ao gerar cupom: ' + error.message);
+    alert('❌ ' + mapErrorToMessage(error));
   }
 }
 

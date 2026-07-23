@@ -1,15 +1,11 @@
 import { db, functions, auth } from './firebase-config.js';
 import {
   collection,
-  setDoc,
   doc,
   getDoc,
-  updateDoc,
   query,
   where,
-  getDocs,
-  Timestamp,
-  increment
+  getDocs
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
 
@@ -147,60 +143,31 @@ function getStatusText(status) {
   return statusMap[status] || status;
 }
 
+const REDEEM_ERROR_MESSAGES = {
+  'failed-precondition': 'Cupom já foi utilizado, expirado ou não confere com a oferta.',
+  'not-found': 'Cupom não encontrado.',
+  'permission-denied': 'Você não tem permissão para resgatar este cupom.',
+  'unauthenticated': 'Você precisa estar logado.',
+};
+
+function mapRedeemErrorToMessage(error) {
+  return REDEEM_ERROR_MESSAGES[error.code] || 'Erro ao resgatar cupom. Tente novamente.';
+}
+
+// Confirmar resgate do cupom. A validação (status/expiração/permissão) e a atualização atômica
+// de coupons + users são feitas pela Cloud Function `redeemCoupon` (server-authoritative).
 window.confirmRedemption = async function (couponId, couponCode) {
   try {
     if (!confirm(`Confirmar o uso do cupom ${couponCode}?`)) {
       return;
     }
 
-    console.log('🎫 Iniciando resgate do cupom:', couponCode);
+    console.log('🎫 Resgatando cupom:', couponCode);
 
-    // 1. Referência do Cupom e Busca inicial
-    const couponRef = doc(db, 'coupons', couponId);
-    const couponDoc = await getDoc(couponRef);
+    const redeemCoupon = httpsCallable(functions, 'redeemCoupon');
+    const result = await redeemCoupon({ couponId, couponCode });
+    const savings = result.data.savings;
 
-    if (!couponDoc.exists()) {
-      alert('❌ Cupom não encontrado');
-      return;
-    }
-
-    const coupon = couponDoc.data();
-
-    if (coupon.status !== 'pending') {
-      alert('❌ Cupom já foi utilizado ou está expirado');
-      return;
-    }
-
-    // 2. Buscar Oferta (Deal) para calcular a economia real
-    const dealDoc = await getDoc(doc(db, 'deals', coupon.dealId));
-    const deal = dealDoc.exists() ? dealDoc.data() : null;
-
-    // Cálculo da economia (Preço Original - Preço com Desconto)
-    const savings = deal ? (deal.originalPrice - deal.dealPrice) : 0;
-
-    // 3. Atualizar o Status do Cupom (Operação Atômica)
-    await updateDoc(couponRef, {
-      status: 'redeemed',
-      redeemedAt: Timestamp.now(),
-      redeemedBy: auth.currentUser?.uid || 'system'
-    });
-
-    console.log("ID do Usuário Dono do Cupom:", coupon.userId);
-
-    // 4. Atualizar Economia do Usuário (Cliente)
-    // Usamos setDoc com { merge: true } para criar o documento se ele não existir
-    // e increment() para somar os valores com segurança no banco
-    const userRef = doc(db, 'users', coupon.userId);
-
-    await setDoc(userRef, {
-      totalSavings: increment(savings),
-      dealsPurchased: increment(1),
-      lastActivity: Timestamp.now()
-    }, { merge: true });
-
-
-
-    // 5. Feedback visual e Limpeza
     alert(`✅ Cupom resgatado com sucesso!\n\nEconomia gerada para o cliente: R$ ${savings.toFixed(2)}`);
 
     const codeInput = document.getElementById('coupon-code');
@@ -209,57 +176,14 @@ window.confirmRedemption = async function (couponId, couponCode) {
     if (codeInput) codeInput.value = '';
     if (resultDiv) resultDiv.classList.add('hidden');
 
-    // 6. Atualizar estatísticas do Painel do Lojista
     const merchantId = auth.currentUser?.uid;
     if (merchantId) {
       await loadStats(merchantId);
     }
 
   } catch (error) {
-    console.error('❌ Erro detalhado ao resgatar:', error);
-
-    // Tratamento de erro específico para permissão
-    if (error.code === 'permission-denied') {
-      alert('❌ Erro de Permissão: Verifique se as novas regras foram publicadas no console do Firebase.');
-    } else {
-      alert('❌ Erro ao resgatar cupom. Tente novamente.');
-    }
-  }
-};
-
-// Confirmar resgate do cupom
-window.confirmRedemptionCloudFunction = async function (couponId, couponCode) {
-  try {
-    if (!confirm(`Confirmar o uso do cupom ${couponCode}?\n\nEsta ação não pode ser desfeita.`)) {
-      return;
-    }
-
-    console.log('🎫 Resgatando cupom:', couponCode);
-
-    // Chamar Cloud Function
-    const redeemCoupon = httpsCallable(functions, 'redeemCoupon');
-    const result = await redeemCoupon({ couponCode });
-
-    if (result.data.success) {
-      const savings = result.data.savings;
-
-      alert(`✅ Cupom resgatado com sucesso!\n\nEconomia do cliente: R$ ${savings.toFixed(2)}`);
-
-      // Limpar formulário
-      document.getElementById('coupon-code').value = '';
-      document.getElementById('validation-result').classList.add('hidden');
-
-      // Atualizar estatísticas
-      const merchantId = auth.currentUser?.uid;
-      await loadStats(merchantId);
-
-    } else {
-      alert('❌ Erro ao resgatar cupom: ' + result.data.message);
-    }
-
-  } catch (error) {
     console.error('❌ Erro ao resgatar cupom:', error);
-    alert('❌ Erro ao resgatar cupom. Verifique a conexão e tente novamente.');
+    alert('❌ ' + mapRedeemErrorToMessage(error));
   }
 };
 
