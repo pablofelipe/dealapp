@@ -6,6 +6,14 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 admin.initializeApp();
 
+// Coupon issuance/redemption logic lives in TypeScript (functions/src), compiled to functions/lib
+// by `npm run build`. Required from ./lib/callable directly (not ./lib/index) because that module
+// also calls admin.initializeApp(), which would throw ("app already exists") since this file already
+// does so above.
+const { generateCoupon, redeemCoupon } = require('./lib/callable/coupons');
+exports.generateCoupon = generateCoupon;
+exports.redeemCoupon = redeemCoupon;
+
 exports.processOfferWithAI = onRequest({
     cors: true,
     secrets: ["GEMINI_API_KEY"],
