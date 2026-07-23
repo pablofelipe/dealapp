@@ -195,10 +195,17 @@ window.reactivateExpiredDeal = async function (dealId) {
     const newExpiresAt = validateExpiryDate(newExpiryDate);
 
     const dealRef = doc(db, 'deals', dealId);
+    const dealSnap = await getDoc(dealRef);
+    if (!dealSnap.exists()) {
+      showNotification('error', '❌ Oferta não encontrada');
+      return;
+    }
+    const dealData = dealSnap.data();
+
     await updateDoc(dealRef, {
       status: 'active',
       expiresAt: Timestamp.fromDate(newExpiresAt),
-      stockAvailable: dealRef.stockTotal,
+      stockAvailable: dealData.stockTotal,
       updatedAt: Timestamp.now()
     });
 
