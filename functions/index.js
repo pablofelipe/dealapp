@@ -31,7 +31,7 @@ exports.processOfferWithAI = onRequest({
         try {
             const genAI = new GoogleGenerativeAI(API_KEY);
 
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
             const prompt = `Você é um especialista em varejo para o app Radar da Oferta. 
     Dados reais: Título "${title}" e Preço promocional R$ ${price}.
@@ -69,7 +69,7 @@ exports.processOfferWithAI = onRequest({
         } catch (sdkError) {
             logger.warn("SDK falhou, tentando via Fetch manual...", sdkError.message);
 
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`;
 
             const fetchResponse = await fetch(API_URL, {
                 method: 'POST',

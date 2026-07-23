@@ -18,7 +18,7 @@ The product has three surfaces:
 Publishing a good offer is the merchant's biggest friction point, so the merchant panel delegates it to a multimodal AI step (`processOfferWithAI` Cloud Function):
 
 1. The merchant uploads a product photo and types only the title and the promotional price.
-2. The function sends the image and the two fields to **Gemini 2.0 Flash**.
+2. The function sends the image and the two fields to **Gemini 2.5 Flash**.
 3. The model returns structured JSON: a short marketing description, the product category (constrained to the app's category taxonomy), a suggested original price and the computed discount percentage.
 4. If the model call fails or no API key is configured, a deterministic fallback fills the same fields, so the publishing flow never blocks on the AI.
 
@@ -40,7 +40,7 @@ The Gemini API key is stored as a Cloud Functions secret — it never ships to t
 |---|---|
 | Frontend | HTML5, CSS3, JavaScript (ES6+), PWA (service worker, manifest) |
 | Backend | Firebase Cloud Functions (Node.js 20) |
-| AI | Gemini 2.0 Flash via `@google/generative-ai` (multimodal) |
+| AI | Gemini 2.5 Flash via `@google/generative-ai` (multimodal) |
 | Data | Cloud Firestore (+ security rules and composite indexes) |
 | Auth | Firebase Authentication (Google) |
 | Messaging | Firebase Cloud Messaging (topic-based) |
