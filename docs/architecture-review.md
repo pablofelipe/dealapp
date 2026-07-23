@@ -20,9 +20,9 @@ visible from reading any single file in isolation.
 | 3 | Firestore rules and indexes exist in two diverging copies; only one is live | P0 | Configuration risk | **Fixed** |
 | 4 | Domain model is anemic; business rules live inline in DOM-manipulating code | P1 | DDD violation | **Fixed** (in `functions/`; frontends still open, see #5) |
 | 5 | Both frontends have no build pipeline, no TypeScript, no test runner | P1 | TDD enabler / foundational | Open |
-| 6 | Geo-proximity data (`geohash`) is written but never queried; declared dependency unused | P2 | Dead data modeling | Open |
+| 6 | Geo-proximity data (`geohash`) is written but never queried; declared dependency unused | P2 | Dead data modeling | **Fixed** |
 | 7 | No test suite anywhere in the repository | P1 | TDD enabler | **Fixed** for `functions/` and pure logic in both frontends; component/DOM testing open |
-| 8 | Storage rules allow any authenticated user to write to any path | P2 | Security hardening | Open |
+| 8 | Storage rules allow any authenticated user to write to any path | P2 | Security hardening | **Fixed** |
 
 Findings 1 and 2 are two faces of the same problem and should be fixed together: the codebase already
 contains the correct fix, it is simply not wired into what actually runs in production.
@@ -248,6 +248,13 @@ should get its own dedicated plan once P0 items are closed.
 
 ## Finding 6 — Geo data is written but never queried
 
+> **Resolved.** `public/js/deals.js::loadNearbyDeals` now queries via `geofire-common`'s
+> `geohashQueryBounds` instead of fetching the whole collection; the two hand-rolled geohash
+> encoders (found to already be correct, just duplicated) now both call `geohashForLocation`. See
+> `frontend/public/js/deals.js` and the new composite index in `firestore.indexes.json`
+> (`deals`: `status` + `merchantLocation.geohash`). `ngeohash` was removed from the root
+> `package.json` — never used, superseded by `geofire-common`.
+
 **Where:** `merchant/js/merchant.js` (`generateGeohash`, lines 254–257), `merchant/js/edit-merchant.js`
 (lines 642–645) — both contain a hand-rolled "simplified" geohash function with a comment saying to use
 a real library in production. `ngeohash` is declared in the root `package.json` but never imported
@@ -288,8 +295,15 @@ without a bundler/test-runner setup first.
 
 ## Finding 8 — Storage rules are broader than necessary
 
+> **Resolved.** Both real upload paths in `merchant/js/deals.js` were inventoried (the regular deal
+> photo upload and the "flash deal" upload, which used a different, non-nested path shape) and
+> normalized to the same `deals/{merchantId}/{fileName}` convention. `storage.rules` now scopes
+> writes to `request.auth.uid == merchantId`, covered by emulator-backed rules tests
+> (`functions/test/integration/storage.rules.emulator.test.ts`).
+
 **Where:** `storage.rules`.
 
+Before:
 ```
 match /{allPaths=**} {
   allow read: if true;
@@ -297,19 +311,17 @@ match /{allPaths=**} {
 }
 ```
 
-Any authenticated user (not just merchants, not just the owner of a given path) can write to any path
-in the bucket. This is a secondary hardening item, not urgent: scope writes to a per-merchant prefix
-(e.g. `deals/{merchantId}/**`) validated against `request.auth.uid` once the upload paths used by
-`merchant/js` are inventoried.
+Any authenticated user (not just merchants, not just the owner of a given path) could write to any
+path in the bucket.
 
 ---
 
 ## Roadmap
 
-Steps 1-4 below are **done**. Deploying the new Cloud Functions to production and merging the rules
-tightening still needs to follow the rollout sequence described inline in the commit/PR history for
-this work (functions deployed manually and validated first, client merged next, rules tightened last —
-CI auto-deploys `firestore.rules` on every push to `main`, so that ordering matters).
+Steps 1-4 and 7 below are **done** and deployed to production (`deal-application`). Step 5 is **done**
+for the build pipeline itself; the TypeScript-conversion half of the original finding is a deliberate,
+separate follow-up (see below). Only step 6 (client-side domain/application layer) and the
+component/DOM-testing half of step 4 remain open.
 
 1. ~~**P0 — Server-authoritative coupon/stock flow.**~~ **Done.** New implementation in
    `functions/src/{domain,application,callable}/`, `functions/index.js` wires in the compiled
@@ -322,10 +334,18 @@ CI auto-deploys `firestore.rules` on every push to `main`, so that ordering matt
    (`functions/src/domain/`). `createDeal`/`updateStock` were dropped rather than ported (see
    Finding 2) — revisit separately if server-authoritative deal creation becomes a priority.
 4. ~~**P1 — Test tooling.**~~ **Done** for `functions/` (Vitest, unit + Firestore Emulator
-   integration tests). Still open for `public/`/`merchant/` — depends on step 5 below.
-5. **P1 — Build pipeline for both frontends** (open). Fix Finding 5: introduce a bundler + TypeScript
-   for `public/` and `merchant/`, migrated incrementally, with CI updated to build them before deploy.
+   integration tests) and for pure business logic in both frontends (Vitest + jsdom,
+   `frontend/{public,merchant}/js/*.test.js`). **Still open:** component/DOM-interaction testing for
+   either frontend (e.g. rendering, form flows) — a separate, larger step than unit-testing already-pure
+   functions.
+5. ~~**P1 — Build pipeline for both frontends.**~~ **Done.** Fix for Finding 5: `frontend/` is now a
+   Vite project (source separate from `dist/` build output), covering the customer PWA, merchant panel,
+   and landing page, with CI building it before deploy. **Deliberately not done in this pass:**
+   converting the `.js` files to TypeScript — scoped out from the start as a separate, later change so
+   the bundler migration and a language migration didn't happen as one undifferentiated risk.
 6. **P2 — Domain/application layer in both frontends** (open), sharing types/validation with
-   `functions/` once step 5 exists.
-7. **P2 — Geo query correctness** (Finding 6, open) and **storage rule hardening** (Finding 8, open),
-   independent of the above and can be picked up at any point.
+   `functions/` — natural next step now that step 5 exists, but not started.
+7. ~~**P2 — Geo query correctness**~~ (Finding 6) **and storage rule hardening** (Finding 8) — **both
+   done.** Geo: `frontend/public/js/deals.js` uses `geofire-common` geohash bounding-box queries instead
+   of fetching the whole `deals` collection. Storage: `storage.rules` scopes writes to
+   `deals/{merchantId}/{fileName}` matching `request.auth.uid`, covered by emulator rules tests.
