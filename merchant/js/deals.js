@@ -918,8 +918,8 @@ async function analyzeOfferWithAI(imageFile, title, price) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
     const CLOUD_FUNCTION_URL = isLocal
-      ? "http://127.0.0.1:5001/the-dealapp/us-central1/processOfferWithAI"
-      : "https://us-central1-the-dealapp.cloudfunctions.net/processOfferWithAI";
+      ? "http://127.0.0.1:5001/deal-application/us-central1/processOfferWithAI"
+      : "https://us-central1-deal-application.cloudfunctions.net/processOfferWithAI";
 
     const response = await fetch(CLOUD_FUNCTION_URL, {
       method: 'POST',
