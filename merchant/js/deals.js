@@ -864,7 +864,7 @@ export async function publishFlashDeal() {
     console.log('💡 Sugestões da IA:', aiSugestion);
 
     // --- PASSO 2: UPLOAD DA IMAGEM ---
-    const storageRef = ref(storage, `deals/${merchantId}_${Date.now()}`);
+    const storageRef = ref(storage, `deals/${merchantId}/flash-${Date.now()}.jpg`);
     const uploadResult = await uploadBytes(storageRef, imageFile);
     const imageUrl = await getDownloadURL(uploadResult.ref);
 

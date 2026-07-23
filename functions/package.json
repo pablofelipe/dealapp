@@ -10,7 +10,7 @@
     "logs": "firebase functions:log",
     "build": "tsc",
     "test:unit": "vitest run --config vitest.config.ts",
-    "test:emulator": "npx firebase-tools emulators:exec --only firestore \"vitest run --config vitest.config.integration.ts\"",
+    "test:emulator": "npx firebase-tools emulators:exec --only firestore,storage \"vitest run --config vitest.config.integration.ts\"",
     "test": "npm run test:unit && npm run test:emulator"
   },
   "engines": {
@@ -23,8 +23,10 @@
     "firebase-functions": "^5.0.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "eslint": "^8.15.0",
     "eslint-config-google": "^0.14.0",
+    "firebase": "^12.16.0",
     "firebase-functions-test": "^3.4.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
