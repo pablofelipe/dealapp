@@ -8,7 +8,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "firebase": "10.7.1"
+    "firebase": "10.7.1",
+    "geofire-common": "^6.0.0"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",

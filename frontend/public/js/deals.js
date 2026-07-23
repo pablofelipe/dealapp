@@ -3,8 +3,10 @@ import {
   collection,
   query,
   where,
+  orderBy,
   getDocs,
 } from 'firebase/firestore';
+import { geohashQueryBounds } from 'geofire-common';
 
 // Configurações do Radar
 const getPreferredRadius = () => parseInt(localStorage.getItem('userRadius')) || 10;
@@ -92,11 +94,10 @@ export async function loadNearbyDeals() {
 
   try {
     const position = await getCurrentLocation(TIMEOUT_GPS).catch(() => null);
-    const dealsRef = collection(db, 'deals');
-    const q = query(dealsRef, where('status', '==', 'active'), where('stockAvailable', '>', 0));
-    const snapshot = await getDocs(q);
 
-    let deals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+    let deals = position
+      ? await fetchDealsNearby([position.coords.latitude, position.coords.longitude], maxRadius)
+      : await fetchAllActiveDeals();
 
     // 1. Filtro de Validade
     deals = deals.filter(deal => {
@@ -111,21 +112,10 @@ export async function loadNearbyDeals() {
       deals = deals.filter(deal => userInterests.includes(deal.category));
     }
 
-    // 3. Filtro de Distância Dinâmico
+    // 3. Filtro de Distância Dinâmico (a busca geo-bounded já trouxe só candidatos da região;
+    // este passo descarta estoque zerado e falsos positivos da caixa aproximada de geohash)
     if (position && deals.length > 0) {
-      const { latitude, longitude } = position.coords;
-
-      deals = deals.map(deal => {
-        const loc = deal.merchantLocation || deal.location;
-        if (!loc || !loc.latitude) return { ...deal, distance: 999 };
-
-        const dist = calcularDistancia(latitude, longitude, loc.latitude, loc.longitude);
-        return {
-          ...deal,
-          distance: dist,
-          distanceText: dist < 1 ? `${(dist * 1000).toFixed(0)}m` : `${dist.toFixed(1)}km`
-        };
-      }).filter(deal => deal.distance <= maxRadius);
+      deals = filterDealsWithinRadius(deals, [position.coords.latitude, position.coords.longitude], maxRadius);
 
       deals.sort((a, b) => {
         const dataA = a.createdAt?.toDate?.() || new Date(0);
@@ -276,6 +266,70 @@ export function calcularDistancia(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+/**
+ * Busca deals ativos dentro de um raio, usando geohash bounding-box query em vez de trazer a
+ * coleção inteira. geohashQueryBounds cobre a área de busca com múltiplos ranges de geohash
+ * (necessário porque uma busca por raio não mapeia pra um único prefixo de geohash contíguo);
+ * os resultados são mesclados por id, já que os ranges podem se sobrepor.
+ */
+async function fetchDealsNearby(center, radiusKm) {
+  const bounds = geohashQueryBounds(center, radiusKm * 1000);
+  const dealsRef = collection(db, 'deals');
+
+  const snapshots = await Promise.all(
+    bounds.map(([start, end]) =>
+      getDocs(query(
+        dealsRef,
+        where('status', '==', 'active'),
+        orderBy('merchantLocation.geohash'),
+        where('merchantLocation.geohash', '>=', start),
+        where('merchantLocation.geohash', '<=', end)
+      ))
+    )
+  );
+
+  const dealsById = new Map();
+  for (const snapshot of snapshots) {
+    for (const doc of snapshot.docs) {
+      dealsById.set(doc.id, { id: doc.id, ...doc.data() });
+    }
+  }
+  return [...dealsById.values()];
+}
+
+/** Fallback usado quando não há posição do usuário (GPS indisponível/negado): sem filtro geográfico. */
+async function fetchAllActiveDeals() {
+  const dealsRef = collection(db, 'deals');
+  const q = query(dealsRef, where('status', '==', 'active'), where('stockAvailable', '>', 0));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+/**
+ * Filtra deals pelo raio exato e por estoque, anexando distance/distanceText. Necessário porque
+ * a busca por geohash bounding-box é aproximada (retorna candidatos de uma caixa quadrada, não
+ * de um círculo exato) e porque o filtro de estoque não pode mais rodar no Firestore junto com o
+ * range query de geohash (só é permitido um campo com filtro de desigualdade por query).
+ */
+export function filterDealsWithinRadius(deals, center, maxRadiusKm) {
+  const [centerLat, centerLon] = center;
+
+  return deals
+    .filter(deal => deal.stockAvailable > 0)
+    .map(deal => {
+      const loc = deal.merchantLocation || deal.location;
+      if (!loc || !loc.latitude) return null;
+
+      const dist = calcularDistancia(centerLat, centerLon, loc.latitude, loc.longitude);
+      return {
+        ...deal,
+        distance: dist,
+        distanceText: dist < 1 ? `${(dist * 1000).toFixed(0)}m` : `${dist.toFixed(1)}km`
+      };
+    })
+    .filter(deal => deal !== null && deal.distance <= maxRadiusKm);
 }
 
 // Pequena função auxiliar para o botão de limpar filtros funcionar

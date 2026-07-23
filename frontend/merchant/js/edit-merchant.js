@@ -6,6 +6,7 @@ import {
     updateDoc,
     serverTimestamp
 } from 'firebase/firestore';
+import { geohashForLocation } from 'geofire-common';
 import { fetchCEP, geocodeMerchantAddress, validateCNPJ } from './merchant.js';
 
 // Elementos DOM
@@ -639,50 +640,10 @@ function formatCEP(cep) {
 }
 
 /**
- * Gera geohash (simplificado - usar biblioteca em produção)
+ * Gera geohash para consultas espaciais
  */
 async function generateGeohash(lat, lng) {
-    // Implementação simplificada - usar ngeohash em produção
-    const precision = 7;
-    const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
-
-    let hash = "";
-    let bits = 0;
-    let bitCount = 0;
-
-    let minLat = -90, maxLat = 90;
-    let minLng = -180, maxLng = 180;
-
-    while (hash.length < precision) {
-        if (bitCount % 2 === 0) {
-            const midLng = (minLng + maxLng) / 2;
-            if (lng > midLng) {
-                bits = (bits << 1) + 1;
-                minLng = midLng;
-            } else {
-                bits = (bits << 1) + 0;
-                maxLng = midLng;
-            }
-        } else {
-            const midLat = (minLat + maxLat) / 2;
-            if (lat > midLat) {
-                bits = (bits << 1) + 1;
-                minLat = midLat;
-            } else {
-                bits = (bits << 1) + 0;
-                maxLat = midLat;
-            }
-        }
-
-        bitCount++;
-
-        if (bitCount % 5 === 0) {
-            hash += BASE32[bits];
-            bits = 0;
-        }
-    }
-
-    return hash;
+    return geohashForLocation([lat, lng]);
 }
 
 /**

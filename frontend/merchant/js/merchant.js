@@ -8,6 +8,7 @@ import {
     updateDoc,
     serverTimestamp
 } from 'firebase/firestore';
+import { geohashForLocation } from 'geofire-common';
 
 // ========== FUNÇÕES DE PERFIL ==========
 
@@ -254,52 +255,7 @@ async function geocodeFallback(location) {
  * Gera geohash para consultas espaciais
  */
 async function generateGeohash(lat, lng) {
-    // Em produção, use uma biblioteca como ngeohash
-    // Esta é uma implementação simplificada
-    const precision = 7; // Precisão de ~153m
-
-    const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
-    let hash = "";
-    let bits = 0;
-    let bitCount = 0;
-
-    let minLat = -90, maxLat = 90;
-    let minLng = -180, maxLng = 180;
-
-    while (hash.length < precision) {
-        let mid;
-
-        if (bitCount % 2 === 0) {
-            // Bit de longitude
-            mid = (minLng + maxLng) / 2;
-            if (lng > mid) {
-                bits = (bits << 1) + 1;
-                minLng = mid;
-            } else {
-                bits = (bits << 1) + 0;
-                maxLng = mid;
-            }
-        } else {
-            // Bit de latitude
-            mid = (minLat + maxLat) / 2;
-            if (lat > mid) {
-                bits = (bits << 1) + 1;
-                minLat = mid;
-            } else {
-                bits = (bits << 1) + 0;
-                maxLat = mid;
-            }
-        }
-
-        bitCount++;
-
-        if (bitCount % 5 === 0) {
-            hash += BASE32[bits];
-            bits = 0;
-        }
-    }
-
-    return hash;
+    return geohashForLocation([lat, lng]);
 }
 
 // ========== BUSCA DE CEP ==========
