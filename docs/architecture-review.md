@@ -21,7 +21,7 @@ visible from reading any single file in isolation.
 | 4 | Domain model is anemic; business rules live inline in DOM-manipulating code | P1 | DDD violation | **Fixed** (in `functions/`; frontends still open, see #5) |
 | 5 | Both frontends have no build pipeline, no TypeScript, no test runner | P1 | TDD enabler / foundational | Open |
 | 6 | Geo-proximity data (`geohash`) is written but never queried; declared dependency unused | P2 | Dead data modeling | Open |
-| 7 | No test suite anywhere in the repository | P1 | TDD enabler | **Fixed** for `functions/`; open for `public/`/`merchant/` |
+| 7 | No test suite anywhere in the repository | P1 | TDD enabler | **Fixed** for `functions/` and pure logic in both frontends; component/DOM testing open |
 | 8 | Storage rules allow any authenticated user to write to any path | P2 | Security hardening | Open |
 
 Findings 1 and 2 are two faces of the same problem and should be fixed together: the codebase already
@@ -269,6 +269,10 @@ either alternative.
 ---
 
 ## Finding 7 — No test suite
+
+> **Resolved for `functions/`** (Vitest, unit + Firestore Emulator integration tests) and **for pure
+> business logic in both frontends** (Vitest + jsdom, `frontend/{public,merchant}/js/*.test.js`) —
+> component/DOM-interaction testing remains open, as a separate, later step.
 
 **Where:** none of the three `package.json` files (root, `functions/`) declare a test runner or contain
 test files.
