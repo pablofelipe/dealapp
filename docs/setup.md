@@ -56,8 +56,8 @@ No Firebase Console:
 
 As regras e índices já estão configurados em:
 
-- `firestore/firestore.rules`
-- `firestore/firestore.indexes.json`
+- `firestore.rules` (raiz do projeto)
+- `firestore.indexes.json` (raiz do projeto)
 
 Para aplicar:
 
