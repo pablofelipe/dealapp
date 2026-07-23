@@ -38,3 +38,8 @@ logs/
 
 # Teste
 dados_teste/
+
+# Claude Code
+CLAUDE.md
+.claude/
+claude/
