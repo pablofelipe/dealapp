@@ -343,8 +343,15 @@ component/DOM-testing half of step 4 remain open.
    and landing page, with CI building it before deploy. **Deliberately not done in this pass:**
    converting the `.js` files to TypeScript — scoped out from the start as a separate, later change so
    the bundler migration and a language migration didn't happen as one undifferentiated risk.
-6. **P2 — Domain/application layer in both frontends** (open), sharing types/validation with
-   `functions/` — natural next step now that step 5 exists, but not started.
+6. ~~**P2 — Domain/application layer in both frontends.**~~ **Done, scoped to what was actually
+   duplicated.** `frontend/shared/domain/{deal,coupon}.js` consolidates the expiry/status checks that
+   had drifted into ~5 inconsistent ad-hoc implementations across `public/js`/`merchant/js` — not a
+   full layered rewrite (category taxonomy and price formatting were checked and found not actually
+   duplicated, so left alone). Surfaced and fixed two real behavior bugs in the process: flash deals
+   (`isUnlimited: true` + a real 24h `expiresAt`) never actually expired in the customer feed, and the
+   merchant dashboard silently excluded deals with no `expiresAt` from the "active deals" count. No
+   code sharing with `functions/` (different runtimes; conceptually mirrors its domain layer's spirit
+   without forcing shared code across Node/browser boundaries).
 7. ~~**P2 — Geo query correctness**~~ (Finding 6) **and storage rule hardening** (Finding 8) — **both
    done.** Geo: `frontend/public/js/deals.js` uses `geofire-common` geohash bounding-box queries instead
    of fetching the whole `deals` collection. Storage: `storage.rules` scopes writes to
