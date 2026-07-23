@@ -6,8 +6,8 @@ import {
   query,
   where,
   getDocs
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
+} from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const COUPON_ERROR_MESSAGES = {
   'failed-precondition': 'Esta oferta não está mais disponível (esgotada ou expirada).',

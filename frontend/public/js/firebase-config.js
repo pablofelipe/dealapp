@@ -1,11 +1,9 @@
 // Configuração Firebase
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, connectFirestoreEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getAuth, connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getMessaging } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
-
-import { getStorage, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-import { getFunctions } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+import { initializeApp } from 'firebase/app';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getMessaging } from 'firebase/messaging';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEJpdEqFdVgSXd8fH7WYjEP2xCfPeGv2Q",
@@ -22,7 +20,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 const storage = getStorage(app);
 export const messaging = getMessaging(app);
-export const functions = getFunctions(app);
 
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   console.log("🛠️ Rodando em ambiente local. Conectando aos Emuladores...");

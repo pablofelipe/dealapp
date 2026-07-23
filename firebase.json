@@ -10,14 +10,13 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": ".",
+    "public": "frontend/dist",
     "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**",
-      "firestore.rules",
-      "storage.rules",
-      "*.json"
+      "**/.*"
+    ],
+    "predeploy": [
+      "npm --prefix frontend ci",
+      "npm --prefix frontend run build"
     ],
     "rewrites": [
       {

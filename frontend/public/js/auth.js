@@ -1,10 +1,10 @@
 import { auth } from './firebase-config.js';
-import { 
-  GoogleAuthProvider, 
-  signInWithPopup, 
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
   signOut,
-  onAuthStateChanged 
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+  onAuthStateChanged
+} from 'firebase/auth';
 
 const provider = new GoogleAuthProvider();
 

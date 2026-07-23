@@ -10,8 +10,8 @@ import {
   deleteDoc,
   Timestamp,
   getDoc
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+} from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const storage = getStorage();
 

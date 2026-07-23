@@ -28,6 +28,16 @@ jobs:
           cd functions
           npm run build
 
+      - name: Install dependencies (frontend)
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
       - name: Deploy Firestore rules
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

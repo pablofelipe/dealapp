@@ -6,8 +6,8 @@ import {
   query,
   where,
   getDocs
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
+} from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 
 // Setup do validador de cupons
 export function setupCouponValidation() {

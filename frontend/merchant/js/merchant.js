@@ -7,7 +7,7 @@ import {
     setDoc,
     updateDoc,
     serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+} from 'firebase/firestore';
 
 // ========== FUNÇÕES DE PERFIL ==========
 

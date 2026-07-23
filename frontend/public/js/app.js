@@ -2,9 +2,9 @@ import { observeAuthState, loginWithGoogle, logout } from './auth.js';
 import { loadNearbyDeals } from './deals.js';
 import { loadMyCoupons } from './coupons.js';
 import { auth, db } from './firebase-config.js';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { getMessaging, getToken } from 'firebase/messaging';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // Elementos DOM
 const loading = document.getElementById('loading');
@@ -376,7 +376,7 @@ function showApp(user) {
   app.classList.remove('hidden');
 
   if (userPhoto) {
-    userPhoto.src = user.photoURL || '/assets/icons/icon-192.png';
+    userPhoto.src = user.photoURL || '/public/assets/icons/icon-192.png';
     userPhoto.alt = user.displayName || 'Usuário';
   }
 }
@@ -751,7 +751,7 @@ async function enableNotifications() {
   try {
     // Tenta registrar o SW do Firebase Messaging
     console.log('🔄 Registrando Firebase Messaging SW...');
-    registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+    registration = await navigator.serviceWorker.register('/public/firebase-messaging-sw.js', {
       updateViaCache: 'none'
     });
 
@@ -912,7 +912,7 @@ window.diagnoseServiceWorkers = async function () {
     console.log('\n🔄 Tentando registrar Firebase Messaging SW...');
     try {
       const firebaseSW = await navigator.serviceWorker.register(
-        '/firebase-messaging-sw.js',
+        '/public/firebase-messaging-sw.js',
         {
           updateViaCache: 'none'
         }

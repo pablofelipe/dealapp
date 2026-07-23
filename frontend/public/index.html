@@ -21,7 +21,7 @@
     <meta name="apple-mobile-web-app-title" content="RadarOfertas" />
 
     <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="/public/manifest.json" />
     <link rel="apple-touch-icon" href="/public/assets/icons/icon-192.png" />
     <link
       rel="icon"
@@ -34,7 +34,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
     <title>Radar da Oferta do seu Bairro</title>
-    <link rel="stylesheet" href="/public/css/styles.css" />
+    <link rel="stylesheet" href="./css/styles.css" />
   </head>
   <body>
     <!-- Loading Screen -->
@@ -304,13 +304,13 @@
     </div>
 
     <!-- Firebase SDKs -->
-    <script type="module" src="/public/js/firebase-config.js?v=1.0.2"></script>
-    <script type="module" src="/public/js/auth.js?v=1.0.2"></script>
-    <script type="module" src="/public/js/deals.js?v=1.0.2"></script>
-    <script type="module" src="/public/js/coupons.js?v=1.0.2"></script>
-    <script type="module" src="/public/js/app.js?v=1.0.2"></script>
+    <script type="module" src="./js/firebase-config.js"></script>
+    <script type="module" src="./js/auth.js"></script>
+    <script type="module" src="./js/deals.js"></script>
+    <script type="module" src="./js/coupons.js"></script>
+    <script type="module" src="./js/app.js"></script>
 
-    <!-- ⚠️ REGISTRO CORRIGIDO DOS SERVICE WORKERS -->
+    <!-- Registro dos Service Workers -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', async () => {
@@ -327,7 +327,7 @@
             await new Promise((resolve) => setTimeout(resolve, 500));
 
             const firebaseSW = await navigator.serviceWorker.register(
-              '/firebase-messaging-sw.js',
+              '/public/firebase-messaging-sw.js',
               {
                 scope: '/',
                 updateViaCache: 'none', // Sempre buscar versão mais recente
@@ -342,7 +342,7 @@
             // NOTA: Não precisa de segundo SW se o Firebase SW já trata tudo
             // Mas se quiser cache separado, pode manter
             /*
-            const mainSW = await navigator.serviceWorker.register('/sw.js', {
+            const mainSW = await navigator.serviceWorker.register('/public/sw.js', {
               scope: '/app/',
               updateViaCache: 'none'
             });

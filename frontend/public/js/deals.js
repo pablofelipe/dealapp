@@ -4,7 +4,7 @@ import {
   query,
   where,
   getDocs,
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+} from 'firebase/firestore';
 
 // Configurações do Radar
 const getPreferredRadius = () => parseInt(localStorage.getItem('userRadius')) || 10;

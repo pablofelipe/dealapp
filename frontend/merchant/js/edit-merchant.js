@@ -5,7 +5,7 @@ import {
     getDoc,
     updateDoc,
     serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+} from 'firebase/firestore';
 import { fetchCEP, geocodeMerchantAddress, validateCNPJ } from './merchant.js';
 
 // Elementos DOM
