@@ -12,6 +12,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { isDealExpired } from '../../shared/domain/deal.js';
 
 const storage = getStorage();
 
@@ -130,7 +131,7 @@ function createDealItem(deal) {
   item.className = 'deal-item';
 
   const expiresAt = deal.expiresAt?.toDate() || new Date();
-  const isExpired = expiresAt < new Date();
+  const isExpired = isDealExpired(deal);
   const isLowStock = deal.stockAvailable < 10;
   const isPaused = deal.status === 'paused';
 

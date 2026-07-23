@@ -7,6 +7,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { geohashQueryBounds } from 'geofire-common';
+import { isDealAvailable, isDealExpired } from '../../shared/domain/deal.js';
 
 // Configurações do Radar
 const getPreferredRadius = () => parseInt(localStorage.getItem('userRadius')) || 10;
@@ -99,13 +100,9 @@ export async function loadNearbyDeals() {
       ? await fetchDealsNearby([position.coords.latitude, position.coords.longitude], maxRadius)
       : await fetchAllActiveDeals();
 
-    // 1. Filtro de Validade
-    deals = deals.filter(deal => {
-      if (deal.isUnlimited) return true;
-      if (!deal.expiresAt) return true;
-      const nowUTC = new Date(new Date().getTime() + (new Date().getTimezoneOffset() * 60 * 1000));
-      return deal.expiresAt.toDate() >= nowUTC;
-    });
+    // 1. Filtro de Validade (isUnlimited dispensa só a checagem de estoque, feita em outra etapa -
+    // ver frontend/shared/domain/deal.js)
+    deals = deals.filter(deal => !isDealExpired(deal));
 
     // 2. Filtro de Interesses (Categorias do perfil)
     if (userInterests.length > 0) {
@@ -317,7 +314,7 @@ export function filterDealsWithinRadius(deals, center, maxRadiusKm) {
   const [centerLat, centerLon] = center;
 
   return deals
-    .filter(deal => deal.stockAvailable > 0)
+    .filter(deal => isDealAvailable(deal))
     .map(deal => {
       const loc = deal.merchantLocation || deal.location;
       if (!loc || !loc.latitude) return null;

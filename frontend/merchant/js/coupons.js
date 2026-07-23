@@ -8,6 +8,8 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { getCouponStatus } from '../../shared/domain/coupon.js';
+import { isDealAvailable } from '../../shared/domain/deal.js';
 
 // Setup do validador de cupons
 export function setupCouponValidation() {
@@ -62,21 +64,16 @@ async function validateCoupon(code) {
     const couponDoc = snapshot.docs[0];
     const coupon = { id: couponDoc.id, ...couponDoc.data() };
 
-    // Verificar status
-    if (coupon.status === 'redeemed') {
+    // Verificar status (expiração é checada antes do status - ver shared/domain/coupon.js)
+    const status = getCouponStatus(coupon);
+    if (status === 'redeemed') {
       showValidationError('⚠️ Este cupom já foi utilizado');
       return;
     }
 
-    if (coupon.status === 'expired') {
-      showValidationError('⚠️ Este cupom está expirado');
-      return;
-    }
-
-    // Verificar expiração
-    const expiresAt = coupon.expiresAt?.toDate();
-    if (expiresAt && expiresAt < new Date()) {
-      showValidationError('⚠️ Este cupom expirou em ' + expiresAt.toLocaleDateString('pt-BR'));
+    if (status === 'expired') {
+      const expiresAt = coupon.expiresAt?.toDate();
+      showValidationError('⚠️ Este cupom expirou' + (expiresAt ? ' em ' + expiresAt.toLocaleDateString('pt-BR') : ''));
       return;
     }
 
@@ -208,7 +205,7 @@ export async function loadStats(merchantId) {
     // Contar deals ativos
     dealsSnapshot.docs.forEach(doc => {
       const deal = doc.data();
-      if (deal.stockAvailable > 0 && deal.expiresAt?.toDate() > new Date()) {
+      if (isDealAvailable(deal)) {
         activeDeals++;
       }
     });

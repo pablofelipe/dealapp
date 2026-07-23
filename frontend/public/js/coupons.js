@@ -8,6 +8,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getCouponStatus } from '../../shared/domain/coupon.js';
 
 const COUPON_ERROR_MESSAGES = {
   'failed-precondition': 'Esta oferta não está mais disponível (esgotada ou expirada).',
@@ -77,7 +78,7 @@ export async function loadMyCoupons() {
 
     // Filtragem: Ativos sempre aparecem; Resgatados/Expirados só se forem recentes
     coupons = coupons.filter(c => {
-      const status = getStatusLogic(c);
+      const status = getCouponStatus(c);
       if (status === 'active' || status === 'urgent') return true;
       const genDate = c.generatedAt?.toDate() || new Date(0);
       return genDate >= threeDaysAgo;
@@ -99,25 +100,6 @@ export async function loadMyCoupons() {
   } catch (error) {
     console.error('❌ Erro ao carregar cupons:', error);
   }
-}
-
-/**
- * Define o estado do cupom baseado em tempo e ação
- */
-export function getStatusLogic(coupon) {
-
-  const now = new Date();
-  const expiresDate = coupon.expiresAt?.toDate();
-
-  if (expiresDate && expiresDate < now) return 'expired';
-
-  if (coupon.status === 'redeemed') return 'redeemed';
-
-  // Regra de Urgência: Faltam menos de 24 horas
-  const diffInHours = (expiresDate - now) / (1000 * 60 * 60);
-  if (diffInHours > 0 && diffInHours < 24) return 'urgent';
-
-  return 'active';
 }
 
 /**
@@ -146,7 +128,7 @@ function renderCoupons(coupons) {
  */
 function createCouponCard(coupon) {
   const deal = coupon.dealInfo;
-  const status = getStatusLogic(coupon);
+  const status = getCouponStatus(coupon);
 
   const card = document.createElement('div');
   card.className = `coupon-card status-${status}`;
