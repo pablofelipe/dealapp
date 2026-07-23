@@ -104,7 +104,7 @@ export async function loadMyCoupons() {
 /**
  * Define o estado do cupom baseado em tempo e ação
  */
-function getStatusLogic(coupon) {
+export function getStatusLogic(coupon) {
 
   const now = new Date();
   const expiresDate = coupon.expiresAt?.toDate();

@@ -274,7 +274,7 @@ function getSelectValue(id, fieldName, required = true) {
   return value;
 }
 
-function validateExpiryDate(dateString) {
+export function validateExpiryDate(dateString) {
   if (!dateString) {
     throw new Error('❌ Data de validade é obrigatória.');
   }
@@ -309,7 +309,7 @@ function validateExpiryDate(dateString) {
   return expiresAt;
 }
 
-function validatePrices(originalPrice, dealPrice) {
+export function validatePrices(originalPrice, dealPrice) {
   if (originalPrice <= 0) {
     throw new Error('❌ Preço original deve ser maior que zero.');
   }
