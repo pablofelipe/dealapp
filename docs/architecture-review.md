@@ -507,8 +507,23 @@ component/DOM-interaction testing for the pure card-rendering functions.
   everything else is Firebase SDK callables, which don't fit a REST contract. See `docs/setup.md` for
   how each Cloud Function is actually documented instead.
 
-**Planned:** nothing is currently scheduled with a committed timeline. The items below are known,
-accepted gaps, not silent ones — treat this list as the honest starting point for prioritizing future
+**Planned:**
+- **Alphanumeric CNPJ support.** Receita Federal is rolling out alphanumeric CNPJs (letters allowed
+  in the first 12 positions, not just the two check digits). `validateCNPJ` is currently
+  numeric-only (`cnpj.replace(/[^\d]+/g, '')` strips letters before validating) and is duplicated,
+  nearly verbatim, in three places: `frontend/merchant/js/merchant.ts`, `frontend/merchant/js/auth.ts`
+  (the only one with a test, `auth.test.ts`), and `frontend/merchant/js/app.ts`. This should be fixed
+  as a consolidation, not a triple patch: move a single alphanumeric-aware implementation into
+  `frontend/shared/domain/` (matching the precedent already set for deal/coupon expiry logic), write
+  the failing tests there first (valid numeric CNPJ, valid alphanumeric CNPJ, invalid check digits,
+  invalid length/format), then have all three call sites import it and delete the duplicates. The
+  check-digit algorithm changes from a straight digit sum to converting each character to a value
+  (`charCode - 48`, so `'0'-'9'` map to `0-9` and `'A'-'Z'` map to `17-42`) before the same weighted
+  mod-11 calculation — the weights and the "remainder < 2 → 0" rule stay the same as the numeric-only
+  version already implements.
+
+The item above is scheduled; nothing else below has a committed timeline. The rest of this list is
+known, accepted gaps, not silent ones — treat it as the honest starting point for prioritizing future
 work, not as a promise any of it will happen.
 
 **Known limitations / accepted technical debt:**

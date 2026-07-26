@@ -78,7 +78,7 @@ export async function loadNearbyDeals() {
   console.log('🚀 Iniciando loadNearbyDeals com filtros do usuário');
   const maxRadius = getPreferredRadius();
 
-  let userInterests = ALL_IDS;
+  const userInterests = ALL_IDS;
   localStorage.setItem('userInterests', JSON.stringify(userInterests));
   /*
   let userInterests = localStorage.getItem('userInterests');

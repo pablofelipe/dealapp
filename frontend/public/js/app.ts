@@ -66,7 +66,7 @@ function renderCategoryInterests() {
   if (!container) return;
 
   // Recupera as preferências já salvas (ou um array vazio)
-  let userInterests = localStorage.getItem('userInterests');
+  const userInterests = localStorage.getItem('userInterests');
 
   //let savedInterests = DEFAULT_CATEGORIES
   const ALL_CATEGORIES_ = CATEGORIES.map(cat => cat.id);

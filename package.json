@@ -1,4 +1,7 @@
 {
+  "name": "dealapp",
+  "version": "0.1.0",
+  "private": true,
   "devDependencies": {
     "eslint": "^9.39.2"
   },

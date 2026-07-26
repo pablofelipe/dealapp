@@ -549,7 +549,7 @@ async function showView(viewName: string) {
 }
 (window as any).showView = showView;
 
-let currentViewListeners = new Set<{ element: EventTarget; event: string; handler: EventListener }>();
+const currentViewListeners = new Set<{ element: EventTarget; event: string; handler: EventListener }>();
 
 function cleanupCurrentView() {
   // Limpar event listeners específicos da view atual
@@ -751,7 +751,7 @@ function validateCNPJ(cnpj) {
   // Valida DVs
   let tamanho = cnpj.length - 2;
   let numeros = cnpj.substring(0, tamanho);
-  let digitos = cnpj.substring(tamanho);
+  const digitos = cnpj.substring(tamanho);
   let soma = 0;
   let pos = tamanho - 7;
 

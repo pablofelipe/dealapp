@@ -1,8 +1,9 @@
 {
   "name": "functions",
+  "version": "0.1.0",
   "description": "Cloud Functions for Firebase",
   "scripts": {
-    "lint": "eslint .",
+    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint . --ext .js,.ts",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
@@ -24,6 +25,9 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^8.15.0",
     "eslint-config-google": "^0.14.0",
     "firebase": "^12.16.0",

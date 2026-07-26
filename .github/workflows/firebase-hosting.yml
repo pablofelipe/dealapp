@@ -23,20 +23,40 @@ jobs:
           cd functions
           npm install
 
+      - name: Lint functions
+        run: |
+          cd functions
+          npm run lint
+
       - name: Build functions
         run: |
           cd functions
           npm run build
+
+      - name: Test functions
+        run: |
+          cd functions
+          npm test
 
       - name: Install dependencies (frontend)
         run: |
           cd frontend
           npm install
 
+      - name: Lint frontend
+        run: |
+          cd frontend
+          npm run lint
+
       - name: Build frontend
         run: |
           cd frontend
           npm run build
+
+      - name: Test frontend
+        run: |
+          cd frontend
+          npm test
 
       - name: Deploy Firestore rules
         env:
