@@ -2,10 +2,15 @@
 
 [![Deploy](https://github.com/pablofelipe/dealapp/actions/workflows/firebase-hosting.yml/badge.svg)](https://github.com/pablofelipe/dealapp/actions/workflows/firebase-hosting.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
 
 Progressive Web App that connects neighborhood merchants to nearby customers: merchants publish
 time-limited deals, customers discover them by proximity and redeem coupons in-store. Serverless on
 Firebase, no backend to operate beyond Cloud Functions.
+
+**Status:** first tagged release (`v0.1.0`), following SemVer's initial-development convention —
+the project is under active development and no compatibility is guaranteed between `0.x` releases.
+See [`CHANGELOG.md`](CHANGELOG.md) for what's in each release.
 
 ![Landing page](frontend/static/radar-hero.png)
 
@@ -132,6 +137,7 @@ firebase deploy --only functions
   functional validation walkthrough.
 - [`docs/pwa-features.md`](docs/pwa-features.md) — PWA capabilities: what's implemented, what isn't,
   and how to test each one.
+- [`CHANGELOG.md`](CHANGELOG.md) — what changed in each release.
 
 ## Contributing
 
