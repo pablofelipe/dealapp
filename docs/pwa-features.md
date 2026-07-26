@@ -1,170 +1,89 @@
-# Recursos PWA - DealApp
+# PWA Features — Radar da Oferta
 
-## Características PWA Implementadas
+Actual state of each PWA capability: what's implemented and what isn't. See
+[`architecture-review.md`](architecture-review.md) for the architectural decisions and
+[`setup.md`](setup.md) for how to test each item locally.
 
-### 1. Service Worker (sw.js)
+## Implemented
 
-O Service Worker é responsável por:
-- **Cache de recursos**: Armazena arquivos estáticos (HTML, CSS, JS, imagens)
-- **Estratégia Network First**: Tenta buscar na rede primeiro, usa cache como fallback
-- **Atualização automática**: Limpa caches antigos quando há nova versão
+### Service Worker
 
-### 2. Web App Manifest (manifest.json)
+Two separate service workers, one per surface, registered from
+`frontend/static/{public,merchant}/sw.js` (unhashed Vite passthrough — see
+`frontend/vite.config.js`):
 
-Configurações para instalação como app:
-- **Nome e descrição**: Informações exibidas na tela de instalação
-- **Ícones**: 192x192 e 512x512 pixels
-- **Display mode**: `standalone` (remove barra do navegador)
-- **Theme color**: Cor da barra de status no Android
+- **Customer PWA** (`frontend/static/public/sw.js`): network-first with cache fallback, plus a
+  `push`/`notificationclick` handler that complements the messaging service worker below.
+  **Known limitation:** the `urlsToCache` list used in the `install` event still references
+  non-hashed paths (`/js/app.js`, `/css/styles.css`) that existed before the Vite migration. The
+  current build produces content-hashed filenames, so those paths no longer exist in `dist/`, and
+  `cache.addAll()` fails for the whole list. In practice, this service worker's app-shell precache
+  doesn't work today; basic offline behavior relies on the browser's HTTP cache for the hashed
+  assets. See `setup.md` (Troubleshooting).
+- **Merchant panel** (`frontend/static/merchant/sw.js`): trivial — plain fetch passthrough, no
+  caching strategy of its own.
 
-### 3. Funcionalidades Offline
+### Firebase Cloud Messaging (push notifications)
 
-O app funciona parcialmente offline:
-- ✅ Interface carregada do cache
-- ✅ Navegação entre telas
-- ✅ Visualização de ofertas em cache
-- ⚠️ Geração de cupons requer conexão (Cloud Functions)
+Implemented end to end, not a roadmap item:
 
-### 4. Instalação no Dispositivo
+- `frontend/static/public/firebase-messaging-sw.js` receives background messages
+  (`onBackgroundMessage`) and builds the notification (icon, "View Deal"/"Dismiss" actions, deep
+  link by `dealId`).
+- The client (`frontend/public/js/app.ts`) requests permission, obtains the token via `getToken`,
+  stores `fcmToken`/`notificationsEnabled` on `users/{uid}`, and subscribes/unsubscribes category
+  topics through the `manageSubscription` Cloud Function.
+- Every newly published deal triggers `onNewDealNotify` (Firestore trigger on `deals/{dealId}`),
+  which notifies the matching category topic.
 
-**Android (Chrome):**
-1. Abra o site no Chrome
-2. Menu (⋮) → "Adicionar à tela inicial"
-3. O app aparece como um app nativo
+### Web App Manifest
 
-**iOS (Safari):**
-1. Abra o site no Safari
-2. Compartilhar (□↑) → "Adicionar à Tela de Início"
-3. O app aparece na tela inicial
+- **Merchant panel** (`frontend/static/merchant/manifest.json`): `start_url` and `scope` are correct
+  (`/merchant/index.html`, `/merchant/`).
+- **Customer PWA** (`frontend/static/public/manifest.json`): **known bug** — `start_url` is `"/"`
+  (the landing page) and `scope` isn't set. Installing the app from `/app` and later opening it from
+  the home screen icon lands on the landing page, not the deals feed. Fix pending: `start_url`
+  should be `/public/index.html` (or `/app`) with `scope: "/public/"` (or `/app`), mirroring what's
+  already correct in the merchant manifest.
 
-**Desktop (Chrome/Edge):**
-1. Ícone de instalação na barra de endereços
-2. Ou: Menu → "Instalar DealApp"
+### Installing on a device
 
-### 5. Experiência App-like
+- **Android (Chrome):** menu (⋮) → "Add to Home screen".
+- **iOS (Safari):** Share (□↑) → "Add to Home Screen".
+- **Desktop (Chrome/Edge):** install icon in the address bar, or menu → "Install".
 
-- **Tela splash**: Configurada via manifest
-- **Navegação nativa**: Bottom navigation bar
-- **Sem barra do navegador**: Em modo standalone
-- **Responsivo**: Funciona em mobile e desktop
+### Offline experience
 
-## Melhorias Futuras PWA
+- The interface and navigation between already-visited screens work from the browser cache even
+  offline.
+- Generating/redeeming a coupon requires a connection (depends on Cloud Functions) — expected
+  behavior, not a bug.
 
-### 1. Notificações Push
+## Not implemented (roadmap, not work in progress)
 
-Implementar Firebase Cloud Messaging:
-```javascript
-// Em messaging.js (a ser criado)
-import { messaging } from './firebase-config.js';
-import { getToken, onMessage } from 'firebase/messaging';
+None of these have any associated code today — they're recorded ideas, not partially built
+features:
 
-// Solicitar permissão
-const token = await getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY' });
+- **Background Sync** — sync actions performed offline once the connection comes back
+  (`ServiceWorkerRegistration.sync`).
+- **Offline queue** — a local (IndexedDB) queue of pending actions while offline.
+- **Resource-specific caching strategies** — today it's network-first for everything;
+  cache-first would make more sense for hashed static assets, stale-while-revalidate for dynamic
+  data.
+- An explicit **app shell architecture** (separating shell cache from dynamic content cache).
+- Fixing the customer PWA's `sw.js` precache list for the post-Vite asset paths (see bug above).
+- Fixing the customer PWA manifest's `start_url`/`scope` (see bug above).
 
-// Escutar mensagens
-onMessage(messaging, (payload) => {
-  // Mostrar notificação
-});
-```
+## How to validate
 
-### 2. Background Sync
+**Lighthouse:** DevTools → Lighthouse → "Progressive Web App" category → Analyze page load. Given
+the precache bug above, expect the "offline start" check to fail until it's fixed.
 
-Sincronizar ações quando conexão voltar:
-```javascript
-// Registrar sync
-navigator.serviceWorker.ready.then(registration => {
-  return registration.sync.register('sync-coupons');
-});
+**Manual offline test:** DevTools → Network → Throttling → "Offline", then:
+- Interface loads from the browser cache ✅
+- Navigation between already-visited screens ✅
+- Coupon generation fails ✅ (expected — depends on Cloud Functions)
 
-// Escutar sync no SW
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-coupons') {
-    event.waitUntil(syncCoupons());
-  }
-});
-```
-
-### 3. Cache Estratégico
-
-Melhorar estratégias de cache:
-- **Cache First**: Para assets estáticos (imagens, CSS)
-- **Network First**: Para dados dinâmicos (ofertas, cupons)
-- **Stale While Revalidate**: Para melhor performance
-
-### 4. Offline Queue
-
-Fila de ações offline:
-```javascript
-// Salvar ações em IndexedDB
-const offlineQueue = [];
-
-function queueAction(action) {
-  offlineQueue.push(action);
-  // Sincronizar quando online
-}
-```
-
-### 5. Precaching Inteligente
-
-Pré-carregar recursos críticos:
-```javascript
-// No SW install
-const criticalResources = [
-  '/',
-  '/css/styles.css',
-  '/js/app.js'
-];
-```
-
-### 6. App Shell Architecture
-
-Separar shell do conteúdo:
-- **Shell**: Layout, navegação, header (sempre em cache)
-- **Content**: Dados dinâmicos (ofertas, cupons)
-
-## Testando PWA
-
-### Lighthouse Audit
-
-1. Abra DevTools (F12)
-2. Vá em **Lighthouse**
-3. Selecione **Progressive Web App**
-4. Execute audit
-
-**Meta**: Score 90+ em todos os critérios
-
-### Checklist PWA
-
-- [x] Service Worker registrado
-- [x] Manifest.json configurado
-- [x] Ícones PWA (192x192, 512x512)
-- [x] HTTPS (necessário para produção)
-- [x] Responsivo
-- [ ] Notificações Push
-- [ ] Background Sync
-- [ ] Offline-first architecture
-
-### Teste Offline
-
-1. Abra o app
-2. DevTools → Network → Throttling → "Offline"
-3. Teste funcionalidades:
-   - ✅ App carrega do cache
-   - ✅ Navegação funciona
-   - ⚠️ Geração de cupons falha (esperado)
-
-## Performance
-
-### Métricas Alvo
-
-- **First Contentful Paint**: < 2s
-- **Time to Interactive**: < 3s
-- **Largest Contentful Paint**: < 2.5s
-- **Cumulative Layout Shift**: < 0.1
-
-### Otimizações
-
-- Minificar CSS/JS para produção
-- Comprimir imagens
-- Lazy loading de imagens
-- Code splitting (se necessário)
+**Push notification:** follow the "Enable notifications" step of the functional validation guide in
+[`setup.md`](setup.md) — publishing a deal in a subscribed category should trigger a notification
+within a few seconds.

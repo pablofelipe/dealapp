@@ -2,13 +2,126 @@
 
 Status: **all 8 findings fixed** — see the note at the top of each finding below and the roadmap at
 the end of this document for what changed and where.
-Scope: `public/` (customer PWA), `merchant/` (merchant panel), `functions/` (Cloud Functions),
-Firestore/Storage security configuration, CI.
+Scope: `frontend/public/` (customer PWA), `frontend/merchant/` (merchant panel), `functions/` (Cloud
+Functions), Firestore/Storage security configuration, CI.
 
 This document records the findings from an initial architectural pass, the reasoning behind each
 recommendation, and a phased roadmap the team has agreed to. It is meant to be read before touching
 the coupon/deal/stock flows or the Cloud Functions entry point, since several of the findings are not
 visible from reading any single file in isolation.
+
+**A note on paths below:** each finding's `**Where:**`/body section describes the bug as it was found,
+at the time it was found — several predate two later moves (root `public/`/`merchant/` into
+`frontend/public/`/`frontend/merchant/`, then `.js` into `.ts`). Those historical paths are left
+unchanged on purpose; the `> **Resolved.**` blockquote at the top of each finding always reflects the
+current, real location and extension. When in doubt, the code is the source of truth, not this
+document — grep for the function/file name if a referenced path no longer exists.
+
+## Architecture overview
+
+Three static surfaces built by one Vite project (`frontend/`) and served by Firebase Hosting from
+`frontend/dist`, plus one Cloud Functions deployment. No server process to operate beyond Functions;
+no message queue, no container orchestration.
+
+```mermaid
+flowchart TB
+    subgraph Client["Browser"]
+        Landing["Landing page (/)"]
+        PWA["Customer PWA (/app)"]
+        Panel["Merchant panel (/painel)"]
+    end
+
+    subgraph Hosting["Firebase Hosting (frontend/dist, built by Vite)"]
+        direction TB
+        HostingNote["Rewrites: /app -> public/index.html, /painel -> merchant/index.html"]
+    end
+
+    subgraph GCP["Firebase / GCP project"]
+        Auth["Firebase Auth (Google sign-in)"]
+        Firestore[("Cloud Firestore\ndeals, coupons, users, merchants")]
+        Storage[("Cloud Storage\ndeal photos")]
+        FCM["Firebase Cloud Messaging"]
+        Functions["Cloud Functions (Node 20)\nfunctions/index.js + functions/lib (compiled TS)"]
+        Gemini["Gemini API (gemini-flash-latest)"]
+    end
+
+    Landing --> Hosting
+    PWA --> Hosting
+    Panel --> Hosting
+
+    PWA -- "Firestore SDK (read deals/coupons, direct)" --> Firestore
+    Panel -- "Firestore SDK (read/write deals/merchants, direct)" --> Firestore
+    PWA -- "sign in" --> Auth
+    Panel -- "sign in" --> Auth
+    Panel -- "upload deal photo" --> Storage
+
+    PWA -- "generateCoupon / redeemCoupon (callable)" --> Functions
+    Panel -- "redeemCoupon, processOfferWithAI (callable/HTTP)" --> Functions
+    Functions -- "Admin SDK, bypasses rules" --> Firestore
+    Functions -- "processOfferWithAI" --> Gemini
+    Functions -- "manageSubscription, onNewDealNotify" --> FCM
+    FCM -- "push" --> PWA
+
+    Firestore -- "onCreate deals/{dealId}" --> Functions
+```
+
+**Why direct client reads are safe here:** customer/merchant reads of `deals`/`coupons`/`merchants`
+go straight from the browser SDK to Firestore, governed by `firestore.rules` — there is no API layer
+in front of reads. Only *mutations* that must preserve an invariant (stock decrement, coupon
+redemption) go through a Cloud Function; everything else would just be an extra network hop with no
+correctness benefit (see Finding 1 for why coupon/stock specifically needed to move server-side).
+
+### Coupon generation and redemption (the one flow that must never race)
+
+```mermaid
+sequenceDiagram
+    actor Customer
+    participant PWA as Customer PWA
+    participant Fn as Cloud Function (onCall)
+    participant FS as Firestore (Admin SDK, transaction)
+
+    Customer->>PWA: open a deal, tap "Generate coupon"
+    PWA->>Fn: generateCoupon(dealId)
+    Fn->>FS: runTransaction: read deals/{dealId}
+    FS-->>Fn: deal (stockAvailable)
+    Note over Fn: Deal.reserveStock() throws if sold out/expired
+    Fn->>FS: tx.update deals.stockAvailable -1, tx.set coupons/{id}
+    FS-->>Fn: committed
+    Fn-->>PWA: { id, code }
+
+    actor Merchant
+    participant Panel as Merchant panel
+    Merchant->>Panel: type the 6-digit code, confirm redemption
+    Panel->>Fn: redeemCoupon(couponId, code)
+    Fn->>FS: runTransaction: read coupons/{id}, read deals/{dealId}
+    FS-->>Fn: coupon, deal
+    Note over Fn: Coupon.redeem() throws if already redeemed/expired/mismatched
+    Fn->>FS: tx.update coupons.status=redeemed, tx.set users/{uid} savings (increment)
+    FS-->>Fn: committed
+    Fn-->>Panel: { savings }
+```
+
+Both transactions are exercised under real concurrency in
+`functions/test/integration/couponService.emulator.test.ts` (two simultaneous `generateCoupon` calls
+against 1 unit of stock; two simultaneous `redeemCoupon` calls on the same coupon) — this is the
+guarantee Finding 1 is about, not just "it works in the happy path."
+
+### Deploy flow
+
+```mermaid
+flowchart LR
+    Push["push to main"] --> CI["GitHub Actions\nfirebase-hosting.yml"]
+    CI --> BuildFn["npm --prefix functions run build"]
+    CI --> BuildFe["npm --prefix frontend run build"]
+    BuildFn --> DeployRules["firebase deploy --only firestore:rules"]
+    BuildFe --> DeployHosting["firebase deploy --only hosting"]
+    Manual["firebase deploy --only functions\n(run by hand)"] -.-> FnProd["Cloud Functions (production)"]
+    DeployRules --> Prod["Firebase project: deal-application"]
+    DeployHosting --> Prod
+```
+
+Neither `BuildFn` nor `BuildFe` run the projects' test suites — CI builds and deploys on every green
+build, not on green tests. See "Known limitations" in the roadmap below.
 
 ## Executive summary
 
@@ -253,10 +366,10 @@ should get its own dedicated plan once P0 items are closed.
 
 ## Finding 6 — Geo data is written but never queried
 
-> **Resolved.** `public/js/deals.js::loadNearbyDeals` now queries via `geofire-common`'s
+> **Resolved.** `loadNearbyDeals` (now `frontend/public/js/deals.ts`) queries via `geofire-common`'s
 > `geohashQueryBounds` instead of fetching the whole collection; the two hand-rolled geohash
 > encoders (found to already be correct, just duplicated) now both call `geohashForLocation`. See
-> `frontend/public/js/deals.js` and the new composite index in `firestore.indexes.json`
+> `frontend/public/js/deals.ts` and the new composite index in `firestore.indexes.json`
 > (`deals`: `status` + `merchantLocation.geohash`). `ngeohash` was removed from the root
 > `package.json` — never used, superseded by `geofire-common`.
 
@@ -354,22 +467,69 @@ component/DOM-interaction testing for the pure card-rendering functions.
    risk; the TypeScript conversion (every file under `frontend/{public,merchant}/js/` and
    `frontend/shared/`) is now also done, `strict: false` and pragmatic (real interfaces for domain
    data, looser typing where DOM access dominates). Fixed a handful of real bugs surfaced by the
-   conversion along the way: `merchant/js/app.ts`'s FCM-token-equivalent flow in `public/js/app.ts`
-   (`enableNotifications`) returned `undefined` on the success path because an inner `const token`
-   shadowed the outer one; `merchant/js/app.ts` had two competing `updateMerchantInfo` definitions
-   (the second silently always won) and dead code referencing a `create-deal-form`/
-   `handleCreateDealSubmit` pair and a `closeAllModals` function that never existed — replaced with
-   the already-working `closePreview`.
+   conversion along the way, in two unrelated files: `frontend/public/js/app.ts`'s
+   `enableNotifications` returned `undefined` on the success path because an inner `const token`
+   shadowed the outer one meant to hold the fetched FCM token; `frontend/merchant/js/app.ts` had two
+   competing `updateMerchantInfo` definitions (the second silently always won) and dead code
+   referencing a `create-deal-form`/`handleCreateDealSubmit` pair and a `closeAllModals` function
+   that never existed anywhere — replaced with the already-working `closePreview`.
 6. ~~**P2 — Domain/application layer in both frontends.**~~ **Done, scoped to what was actually
-   duplicated.** `frontend/shared/domain/{deal,coupon}.js` consolidates the expiry/status checks that
-   had drifted into ~5 inconsistent ad-hoc implementations across `public/js`/`merchant/js` — not a
-   full layered rewrite (category taxonomy and price formatting were checked and found not actually
-   duplicated, so left alone). Surfaced and fixed two real behavior bugs in the process: flash deals
-   (`isUnlimited: true` + a real 24h `expiresAt`) never actually expired in the customer feed, and the
-   merchant dashboard silently excluded deals with no `expiresAt` from the "active deals" count. No
-   code sharing with `functions/` (different runtimes; conceptually mirrors its domain layer's spirit
-   without forcing shared code across Node/browser boundaries).
+   duplicated.** `frontend/shared/domain/{deal,coupon}.ts` consolidates the expiry/status checks that
+   had drifted into ~5 inconsistent ad-hoc implementations across `frontend/public/js`/
+   `frontend/merchant/js` — not a full layered rewrite (category taxonomy and price formatting were
+   checked and found not actually duplicated, so left alone). Surfaced and fixed two real behavior
+   bugs in the process: flash deals (`isUnlimited: true` + a real 24h `expiresAt`) never actually
+   expired in the customer feed, and the merchant dashboard silently excluded deals with no
+   `expiresAt` from the "active deals" count. No code sharing with `functions/` (different runtimes;
+   conceptually mirrors its domain layer's spirit without forcing shared code across Node/browser
+   boundaries).
 7. ~~**P2 — Geo query correctness**~~ (Finding 6) **and storage rule hardening** (Finding 8) — **both
-   done.** Geo: `frontend/public/js/deals.js` uses `geofire-common` geohash bounding-box queries instead
+   done.** Geo: `frontend/public/js/deals.ts` uses `geofire-common` geohash bounding-box queries instead
    of fetching the whole `deals` collection. Storage: `storage.rules` scopes writes to
    `deals/{merchantId}/{fileName}` matching `request.auth.uid`, covered by emulator rules tests.
+
+## Current status
+
+**Implemented** — see the 8 findings and 7 roadmap steps above; all shipped and deployed to
+`deal-application`.
+
+**Explicitly out of scope (non-goals for this codebase, not oversights):**
+- `createDeal`/`updateStock` as server-authoritative Cloud Functions — dropped rather than ported
+  (Finding 2); deal creation stays a direct client write, revisit only if that stops being safe
+  enough (e.g. if deal creation needs the same anti-fraud guarantees as stock/coupon mutation).
+- Full page/flow simulation testing (multi-step forms, auth-gated view transitions) — only pure
+  domain logic and pure rendering functions are unit-tested (Finding 7); this was a deliberate scope
+  cut, not a gap nobody noticed.
+- Docker Compose, Kubernetes, a message broker, Prometheus/Grafana — none apply to a Firebase
+  serverless architecture with one async fan-out (`onNewDealNotify` → FCM). Introducing any of these
+  would be solving a scaling/ops problem this project doesn't have.
+- Swagger/OpenAPI/Postman collections — the only traditional HTTP endpoint is `processOfferWithAI`;
+  everything else is Firebase SDK callables, which don't fit a REST contract. See `docs/setup.md` for
+  how each Cloud Function is actually documented instead.
+
+**Planned:** nothing is currently scheduled with a committed timeline. The items below are known,
+accepted gaps, not silent ones — treat this list as the honest starting point for prioritizing future
+work, not as a promise any of it will happen.
+
+**Known limitations / accepted technical debt:**
+- Six Cloud Functions (`processOfferWithAI`, `manageSubscription`, `onNewDealNotify`,
+  `testNotification`, `checkTopicStatus`, `debugTokenInfo`) remain plain JavaScript in
+  `functions/index.js`, outside the TypeScript tree used by `generateCoupon`/`redeemCoupon` (Finding 2).
+- CI (`.github/workflows/firebase-hosting.yml`) builds and deploys Firestore rules + Hosting on every
+  push to `main` **without running either test suite** first — a red test suite does not block a
+  deploy today. Cloud Functions deploy is entirely manual, also without a test gate.
+- The root `eslint.config.mjs` only covers `**/*.{js,mjs,cjs}` and doesn't ignore the compiled
+  `functions/lib/` output (running it produces hundreds of false-positive errors on generated code).
+  There is no lint configuration at all for `frontend/`'s TypeScript source.
+- `frontend/static/public/manifest.json` has `start_url: "/"` with no `scope` — installing the
+  customer PWA and reopening it from the home screen lands on the landing page, not the deals feed
+  (the merchant manifest gets this right). See `docs/pwa-features.md`.
+- `frontend/static/public/sw.js`'s install-time precache list references pre-Vite, non-hashed asset
+  paths that no longer exist in the build output; the precache silently fails. See
+  `docs/pwa-features.md`.
+- Neither `frontend/public/js/firebase-config.ts` nor `frontend/merchant/js/firebase-config.ts` call
+  `connectFunctionsEmulator`, so `generateCoupon`/`redeemCoupon` invoked from a locally-running app
+  hit the real, deployed Cloud Functions and production Firestore, not the local emulator. See
+  `docs/setup.md` (Troubleshooting).
+- One Vite output chunk (`coupon-*.js`) is ~527KB, above Vite's 500KB warning threshold — no
+  code-splitting has been applied.
