@@ -7,7 +7,8 @@ import {
     serverTimestamp
 } from 'firebase/firestore';
 import { geohashForLocation } from 'geofire-common';
-import { fetchCEP, geocodeMerchantAddress, validateCNPJ } from './merchant.js';
+import { fetchCEP, geocodeMerchantAddress } from './merchant.js';
+import { validateCNPJ } from '../../shared/domain/cnpj.js';
 
 /** Every element this file touches is read/written as a form input - cast once here. */
 function getEl(id: string): HTMLInputElement {

@@ -493,10 +493,16 @@ component/DOM-interaction testing for the pure card-rendering functions.
 **Implemented** — see the 8 findings and 7 roadmap steps above; all shipped and deployed to
 `deal-application`.
 
-**Explicitly out of scope (non-goals for this codebase, not oversights):**
+**Explicitly out of scope (permanent decisions, not oversights — not being revisited):**
 - `createDeal`/`updateStock` as server-authoritative Cloud Functions — dropped rather than ported
-  (Finding 2); deal creation stays a direct client write, revisit only if that stops being safe
-  enough (e.g. if deal creation needs the same anti-fraud guarantees as stock/coupon mutation).
+  (Finding 2); deal creation stays a direct client write.
+- The six non-coupon Cloud Functions (`processOfferWithAI`, `manageSubscription`, `onNewDealNotify`,
+  `testNotification`, `checkTopicStatus`, `debugTokenInfo`) stay plain JavaScript in
+  `functions/index.js`, outside the TypeScript tree used by `generateCoupon`/`redeemCoupon` (Finding 2).
+- `frontend/static/public/sw.js` stays unregistered (registration commented out in
+  `frontend/public/index.html`; only `firebase-messaging-sw.js` runs) — no app-shell precache in
+  production. Its precache list is still kept correct so the file isn't misleading to read, but
+  re-enabling it is not planned.
 - Full page/flow simulation testing (multi-step forms, auth-gated view transitions) — only pure
   domain logic and pure rendering functions are unit-tested (Finding 7); this was a deliberate scope
   cut, not a gap nobody noticed.
@@ -507,35 +513,13 @@ component/DOM-interaction testing for the pure card-rendering functions.
   everything else is Firebase SDK callables, which don't fit a REST contract. See `docs/setup.md` for
   how each Cloud Function is actually documented instead.
 
-**Planned:**
-- **Alphanumeric CNPJ support.** Receita Federal is rolling out alphanumeric CNPJs (letters allowed
-  in the first 12 positions, not just the two check digits). `validateCNPJ` is currently
-  numeric-only (`cnpj.replace(/[^\d]+/g, '')` strips letters before validating) and is duplicated,
-  nearly verbatim, in three places: `frontend/merchant/js/merchant.ts`, `frontend/merchant/js/auth.ts`
-  (the only one with a test, `auth.test.ts`), and `frontend/merchant/js/app.ts`. This should be fixed
-  as a consolidation, not a triple patch: move a single alphanumeric-aware implementation into
-  `frontend/shared/domain/` (matching the precedent already set for deal/coupon expiry logic), write
-  the failing tests there first (valid numeric CNPJ, valid alphanumeric CNPJ, invalid check digits,
-  invalid length/format), then have all three call sites import it and delete the duplicates. The
-  check-digit algorithm changes from a straight digit sum to converting each character to a value
-  (`charCode - 48`, so `'0'-'9'` map to `0-9` and `'A'-'Z'` map to `17-42`) before the same weighted
-  mod-11 calculation — the weights and the "remainder < 2 → 0" rule stay the same as the numeric-only
-  version already implements.
-
-The item above is scheduled; nothing else below has a committed timeline. The rest of this list is
-known, accepted gaps, not silent ones — treat it as the honest starting point for prioritizing future
+**Planned:** nothing currently scheduled with a committed timeline. The list below is known,
+accepted gaps, not silent ones — treat it as the honest starting point for prioritizing future
 work, not as a promise any of it will happen.
 
-**Known limitations / accepted technical debt:**
-- Six Cloud Functions (`processOfferWithAI`, `manageSubscription`, `onNewDealNotify`,
-  `testNotification`, `checkTopicStatus`, `debugTokenInfo`) remain plain JavaScript in
-  `functions/index.js`, outside the TypeScript tree used by `generateCoupon`/`redeemCoupon` (Finding 2).
+**Known limitations / accepted technical debt (still worth revisiting, unlike the non-goals above):**
 - One Vite output chunk (`coupon-*.js`) is ~527KB, above Vite's 500KB warning threshold — no
   code-splitting has been applied.
-- `frontend/static/public/sw.js`'s registration is commented out in `frontend/public/index.html`
-  (only `firebase-messaging-sw.js` is registered) — there's no app-shell precache in production
-  today, by choice, not by bug. Its precache list was fixed regardless so the file is correct
-  whenever someone re-enables it. See `docs/pwa-features.md`.
 - Both manifests reference only a 192px icon — the 512px one Lighthouse's PWA audit expects was
   never created (`icon-512.png` didn't exist anywhere in the repo despite being referenced; the
   dead reference was removed rather than left broken). Needs a real design asset, not a code fix.
@@ -544,6 +528,11 @@ Resolved since this section was last written (kept here briefly instead of silen
 CI now lints and runs both test suites before build/deploy (a red suite blocks a deploy); the root
 `eslint.config.mjs` now delegates to `functions/`'s and `frontend/`'s own lint configs instead of
 scanning compiled output; `frontend/`'s TypeScript now has real lint coverage; the customer PWA
-manifest's `start_url`/`scope` are fixed; and both `firebase-config.ts` files call
+manifest's `start_url`/`scope` are fixed; both `firebase-config.ts` files call
 `connectFunctionsEmulator`, so local Cloud Functions calls now hit the emulator instead of
-production. See `docs/setup.md` for the updated Troubleshooting entries.
+production; and CNPJ validation now supports Receita Federal's alphanumeric CNPJs
+(`frontend/shared/domain/cnpj.ts`, TDD'd first in `cnpj.test.ts`), consolidated from three
+near-identical, numeric-only copies (`frontend/merchant/js/{merchant,auth,app}.ts`) into the one
+shared implementation all three now import — `auth.ts`'s copy was dead code (only ever exercised
+by its own test file, `auth.test.ts`, now removed along with it). See `docs/setup.md` for the
+updated Troubleshooting entries.
