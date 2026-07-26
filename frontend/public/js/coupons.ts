@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getCouponStatus } from '../../shared/domain/coupon.js';
+import type { Coupon } from '../../shared/types.js';
 
 const COUPON_ERROR_MESSAGES = {
   'failed-precondition': 'Esta oferta não está mais disponível (esgotada ou expirada).',
@@ -26,7 +27,7 @@ function mapErrorToMessage(error) {
  * `generateCoupon` (server-authoritative, transação atômica) - este arquivo só chama a função
  * e mostra o resultado.
  */
-export async function generateCoupon(dealId) {
+export async function generateCoupon(dealId: string) {
   try {
     const user = auth.currentUser;
     if (!user) {
@@ -37,7 +38,7 @@ export async function generateCoupon(dealId) {
     console.log('🎫 Gerando cupom para deal:', dealId);
 
     const functions = getFunctions();
-    const call = httpsCallable(functions, 'generateCoupon');
+    const call = httpsCallable<{ dealId: string }, { id: string; code: string }>(functions, 'generateCoupon');
     const result = await call({ dealId });
     const { id, code } = result.data;
 
@@ -56,7 +57,7 @@ export async function generateCoupon(dealId) {
 }
 
 // Função global para ser chamada pelo botão do modal
-window.generateCouponFromModal = generateCoupon;
+(window as any).generateCouponFromModal = generateCoupon;
 
 /**
  * Carregar cupons do usuário
@@ -74,7 +75,7 @@ export async function loadMyCoupons() {
     const q = query(couponsRef, where('userId', '==', user.uid));
 
     const snapshot = await getDocs(q);
-    let coupons = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    let coupons = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Coupon));
 
     // Filtragem: Ativos sempre aparecem; Resgatados/Expirados só se forem recentes
     coupons = coupons.filter(c => {
@@ -94,7 +95,9 @@ export async function loadMyCoupons() {
     }));
 
     // Ordenação: Mais recentes primeiro
-    couponsWithDetails.sort((a, b) => (b.generatedAt?.toDate() || 0) - (a.generatedAt?.toDate() || 0));
+    couponsWithDetails.sort((a, b) =>
+      (b.generatedAt?.toDate().getTime() || 0) - (a.generatedAt?.toDate().getTime() || 0)
+    );
 
     renderCoupons(couponsWithDetails);
   } catch (error) {

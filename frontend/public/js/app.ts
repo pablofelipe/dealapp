@@ -12,7 +12,7 @@ const loginScreen = document.getElementById('login-screen');
 const app = document.getElementById('app');
 const googleLoginBtn = document.getElementById('google-login-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const userPhoto = document.getElementById('user-photo');
+const userPhoto = document.getElementById('user-photo') as HTMLImageElement | null;
 
 // Navegação entre tabs
 const navItems = document.querySelectorAll('.nav-item');
@@ -34,7 +34,7 @@ function setupEventListeners() {
 
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
-      const tab = e.currentTarget.dataset.tab;
+      const tab = (e.currentTarget as HTMLElement).dataset.tab;
       switchTab(tab);
     });
   });
@@ -90,7 +90,7 @@ function renderCategoryInterests() {
 }
 
 // 3. Função para ativar/desativar um interesse
-window.toggleInterest = async function (categoryId) {
+(window as any).toggleInterest = async function (categoryId) {
   let savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
   const isAdding = !savedInterests.includes(categoryId);
 
@@ -138,7 +138,7 @@ window.toggleInterest = async function (categoryId) {
 };
 
 function setupRadiusSlider() {
-  const slider = document.getElementById('pref-radius');
+  const slider = document.getElementById('pref-radius') as HTMLInputElement | null;
   const display = document.getElementById('radius-value');
 
   // Opções idênticas às do lojista
@@ -147,20 +147,20 @@ function setupRadiusSlider() {
   if (!slider || !display) return;
 
   // Carregar valor salvo ou definir padrão 10km (índice 4)
-  const savedRadius = parseInt(localStorage.getItem('userRadius')) || 10;
+  const savedRadius = parseInt(localStorage.getItem('userRadius') || '') || 10;
   const initialIndex = radiusOptions.indexOf(savedRadius);
-  slider.value = initialIndex !== -1 ? initialIndex : 4;
+  slider.value = (initialIndex !== -1 ? initialIndex : 4).toString();
 
-  updateDisplay(radiusOptions[slider.value]);
+  updateDisplay(radiusOptions[Number(slider.value)]);
 
   slider.addEventListener('input', (e) => {
-    const km = radiusOptions[e.target.value];
+    const km = radiusOptions[Number((e.target as HTMLInputElement).value)];
     updateDisplay(km);
   });
 
   slider.addEventListener('change', (e) => {
-    const km = radiusOptions[e.target.value];
-    localStorage.setItem('userRadius', km);
+    const km = radiusOptions[Number((e.target as HTMLInputElement).value)];
+    localStorage.setItem('userRadius', km.toString());
     console.log(`Raio de busca definido para: ${km}km`);
 
     // recarregar ofertas ao mudar
@@ -434,14 +434,14 @@ async function loadDeals(radius = 10) {
 /**
  * Expandir busca para raio maior
  */
-window.expandSearch = async function () {
+(window as any).expandSearch = async function () {
   await loadDeals(20); // 20km
 };
 
 /**
  * Obter posição atual do navegador
  */
-function getCurrentPosition() {
+function getCurrentPosition(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocalização não suportada pelo navegador'));
@@ -542,7 +542,7 @@ function switchTab(tab) {
   else if (tab === 'coupons') {
     const couponsSection = document.getElementById('coupons-section');
     couponsSection?.classList.remove('hidden');
-    if (currentUser) loadMyCoupons(currentUser.uid);
+    if (currentUser) loadMyCoupons();
   }
   else if (tab === 'profile') {
     const profileSection = document.getElementById('profile');
@@ -625,7 +625,7 @@ async function manageNotifications(shouldEnable) {
           notificationsEnabled: true,
           fcmToken: token,
           lastTokenUpdate: serverTimestamp()
-        }, { merge: true });
+        });
 
         localStorage.setItem('notificationsEnabled', 'true');
         console.log('✅ Notificações ativadas com sucesso');
@@ -660,7 +660,7 @@ async function manageNotifications(shouldEnable) {
       await updateDoc(userRef, {
         notificationsEnabled: false,
         fcmToken: null
-      }, { merge: true });
+      });
 
       localStorage.setItem('notificationsEnabled', 'false');
       console.log('✅ Notificações desativadas');
@@ -676,7 +676,7 @@ async function manageNotifications(shouldEnable) {
       // Se estava tentando ativar e falhou, manter desativado
       await updateDoc(userRef, {
         notificationsEnabled: false
-      }, { merge: true });
+      });
 
       localStorage.setItem('notificationsEnabled', 'false');
     }
@@ -760,9 +760,9 @@ async function enableNotifications() {
     // Aguardar ativação
     if (registration.installing) {
       console.log('⏳ Aguardando ativação do SW...');
-      await new Promise((resolve) => {
+      await new Promise<void>((resolve) => {
         registration.installing.addEventListener('statechange', (e) => {
-          if (e.target.state === 'activated') {
+          if ((e.target as ServiceWorker).state === 'activated') {
             console.log('✅ SW ativado!');
             resolve();
           }
@@ -791,18 +791,8 @@ async function enableNotifications() {
   let token;
 
   try {
-    const options = {
-      vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ'
-    };
-
-    // Se temos um registration, usar
-    if (registration) {
-      options.serviceWorkerRegistration = registration;
-    }
-
     console.log('🔑 Solicitando token FCM...');
-    //token = await getToken(messaging, options);
-    const token = await getToken(messaging, {
+    token = await getToken(messaging, {
       vapidKey: 'BPb43TW_UXA4Isl1yDo6GMjVoiCTs6jZUmacxpx-s42WMWgIP_lHHa27F_MlAAOR8Zh86cawjciiXkRHf1pzBzQ',
       serviceWorkerRegistration: registration
     });
@@ -888,7 +878,7 @@ async function unsubscribeFromTopic(topic, token) {
 }
 
 // Função para diagnosticar Service Workers
-window.diagnoseServiceWorkers = async function () {
+(window as any).diagnoseServiceWorkers = async function () {
   console.log('=== 🔍 DIAGNÓSTICO DE SERVICE WORKERS ===');
 
   if (!('serviceWorker' in navigator)) {
@@ -925,10 +915,11 @@ window.diagnoseServiceWorkers = async function () {
       // Aguardar ativação se necessário
       if (firebaseSW.installing) {
         console.log('⏳ Aguardando ativação...');
-        return new Promise(resolve => {
+        return new Promise<void>(resolve => {
           firebaseSW.installing.addEventListener('statechange', (e) => {
-            console.log(`   Estado mudou para: ${e.target.state}`);
-            if (e.target.state === 'activated') {
+            const state = (e.target as ServiceWorker).state;
+            console.log(`   Estado mudou para: ${state}`);
+            if (state === 'activated') {
               console.log('🎉 Firebase SW ativado!');
               resolve();
             }
@@ -964,4 +955,4 @@ function closeModal() {
   document.getElementById('deal-modal')?.classList.add('hidden');
 }
 
-window.closeModal = closeModal;
+(window as any).closeModal = closeModal;

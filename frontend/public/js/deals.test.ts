@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 // deals.js doesn't eagerly initialize the real Firebase SDK under Node.
 vi.mock('./firebase-config.js', () => ({ db: {} }));
 
+import type { Deal } from '../../shared/types.js';
 import { calcularDistancia, filterDealsWithinRadius } from './deals.js';
 
 describe('calcularDistancia', () => {
@@ -24,15 +25,15 @@ describe('calcularDistancia', () => {
 });
 
 describe('filterDealsWithinRadius', () => {
-  const center = [-23.561684, -46.655981]; // Av. Paulista, SP
+  const center: [number, number] = [-23.561684, -46.655981]; // Av. Paulista, SP
 
-  function makeDeal(overrides = {}) {
+  function makeDeal(overrides: Partial<Deal> = {}): Deal {
     return {
       id: 'deal-1',
       stockAvailable: 5,
       merchantLocation: { latitude: -23.561684, longitude: -46.655981 },
       ...overrides,
-    };
+    } as Deal;
   }
 
   it('exclui um deal sem merchantLocation', () => {

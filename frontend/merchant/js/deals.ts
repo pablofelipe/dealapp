@@ -14,6 +14,11 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { isDealExpired } from '../../shared/domain/deal.js';
 
+/** Every element this file touches is read/written as a form input - cast once here. */
+function getEl(id: string): HTMLInputElement {
+  return document.getElementById(id) as HTMLInputElement;
+}
+
 const storage = getStorage();
 
 // Carregar ofertas do lojista
@@ -33,12 +38,12 @@ export async function loadMerchantDeals(merchantId) {
     const deals = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    } as any));
 
     deals.sort((a, b) => {
       const dateA = a.createdAt?.toDate() || new Date(0);
       const dateB = b.createdAt?.toDate() || new Date(0);
-      return dateB - dateA;
+      return dateB.getTime() - dateA.getTime();
     });
 
     renderMerchantDeals(deals);
@@ -71,14 +76,14 @@ async function getMerchantData(merchantId) {
 export async function updateMerchantUI(merchantData) {
   try {
     // Atualizar badge do merchant na sidebar
-    const merchantBadge = document.getElementById('merchant-name-badge');
+    const merchantBadge = getEl('merchant-name-badge');
     if (merchantBadge && merchantData.tradingName) {
       merchantBadge.textContent = merchantData.tradingName;
       merchantBadge.title = merchantData.businessName || merchantData.tradingName;
     }
 
     // Atualizar informações de localização na view de criar oferta
-    const locationInfo = document.getElementById('merchant-location-info');
+    const locationInfo = getEl('merchant-location-info');
     if (locationInfo && merchantData.location) {
       const loc = merchantData.location;
       const addressParts = [];
@@ -104,7 +109,7 @@ export async function updateMerchantUI(merchantData) {
 
 // Renderizar ofertas
 function renderMerchantDeals(deals) {
-  const dealsList = document.getElementById('deals-list');
+  const dealsList = getEl('deals-list');
 
   if (!dealsList) return;
 
@@ -184,7 +189,7 @@ function createDealItem(deal) {
   return item;
 }
 
-window.reactivateExpiredDeal = async function (dealId) {
+(window as any).reactivateExpiredDeal = async function (dealId) {
   try {
     if (!confirm('Deseja reativar esta oferta expirada?\n\nSerá necessário definir uma nova data de validade.')) {
       return;
@@ -224,7 +229,7 @@ window.reactivateExpiredDeal = async function (dealId) {
 // ========== FUNÇÕES AUXILIARES ==========
 
 function getElement(id, fieldName) {
-  const element = document.getElementById(id);
+  const element = getEl(id);
   if (!element) {
     throw new Error(`❌ Campo "${fieldName}" (ID: ${id}) não encontrado no HTML. Verifique se o elemento existe.`);
   }
@@ -336,7 +341,7 @@ async function createDeal() {
 
     console.log('🔄 Iniciando criação de oferta...');
 
-    const selectConcierge = document.getElementById('select-lojista');
+    const selectConcierge = getEl('select-lojista');
 
     const merchantIdFinal = (selectConcierge.value) ? selectConcierge.value : auth.currentUser?.uid;
     // 1. Verificar autenticação
@@ -363,8 +368,8 @@ async function createDeal() {
     const dealPrice = getNumberValue('deal-price', 'Preço com desconto', true, 0.01);
     const category = getSelectValue('deal-category', 'Categoria');
     //const stock = getNumberValue('deal-stock', 'Estoque', true, 1);
-    const isUnlimited = document.getElementById('unlimited-stock').checked;
-    const stock = isUnlimited ? 999999 : parseInt(document.getElementById('deal-stock').value);
+    const isUnlimited = getEl('unlimited-stock').checked;
+    const stock = isUnlimited ? 999999 : parseInt(getEl('deal-stock').value);
 
     // 4. Validações de preço
     validatePrices(originalPrice, dealPrice);
@@ -448,8 +453,8 @@ async function createDeal() {
     showNotification('success', '🎉 Oferta criada com sucesso!');
 
     // 11. Limpar formulário
-    window.closePreview();
-    window.resetDealForm();
+    (window as any).closePreview();
+    (window as any).resetDealForm();
 
     // 12. Voltar para lista e recarregar
     showView('deals');
@@ -486,7 +491,7 @@ async function compressImage(file) {
     reader.readAsDataURL(file);
     reader.onload = (event) => {
       const img = new Image();
-      img.src = event.target.result;
+      img.src = event.target!.result as string;
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const MAX_WIDTH = 800; // Tamanho ideal para web
@@ -515,7 +520,7 @@ async function compressImage(file) {
 async function getDealImage() {
   try {
     // Tenta pegar da URL primeiro
-    const urlInput = document.getElementById('deal-image-url');
+    const urlInput = getEl('deal-image-url');
     if (urlInput && urlInput.value.trim()) {
       const urlValue = urlInput.value.trim();
       if (isValidUrl(urlValue)) {
@@ -529,7 +534,7 @@ async function getDealImage() {
   }
 
   // No momento de criar a oferta (dentro do seu createDeal)
-  const imageInput = document.getElementById('deal-image-input');
+  const imageInput = getEl('deal-image-input');
 
   const imageFile = imageInput ? imageInput.files[0] : null; // Pega o arquivo se existir
   let imageUrl = '';
@@ -598,13 +603,13 @@ function showNotification(type, message) {
   }, 5000);
 }
 
-window.resetDealForm = function () {
+(window as any).resetDealForm = function () {
   if (confirm('Deseja descartar as alterações desta oferta?')) {
-    const form = document.getElementById('deal-form');
+    const form = getEl('deal-form') as unknown as HTMLFormElement;
     if (form) form.reset();
 
     // Limpa o badge de desconto (se for span ou input)
-    const discountField = document.getElementById('deal-discount');
+    const discountField = getEl('deal-discount');
     if (discountField) {
       discountField.value = '';
       discountField.textContent = '0%';
@@ -616,27 +621,27 @@ window.resetDealForm = function () {
 
 let isPreviewLoading = false;
 
-window.openDealPreview = function () {
+(window as any).openDealPreview = function () {
   if (isPreviewLoading) return;
   isPreviewLoading = true;
 
   try {
     console.log('🔍 Iniciando Preview Seguro...');
 
-    const title = document.getElementById('deal-title').value || 'Título da Oferta';
-    const description = document.getElementById('deal-description').value || 'Descrição da oferta...';
-    const priceOld = parseFloat(document.getElementById('deal-original-price').value) || 0;
-    const priceNew = parseFloat(document.getElementById('deal-price').value) || 0;
+    const title = getEl('deal-title').value || 'Título da Oferta';
+    const description = getEl('deal-description').value || 'Descrição da oferta...';
+    const priceOld = parseFloat(getEl('deal-original-price').value) || 0;
+    const priceNew = parseFloat(getEl('deal-price').value) || 0;
     // Dentro de openDealPreview no deals.js
-    const discountVal = document.getElementById('deal-discount').value || '0';
+    const discountVal = getEl('deal-discount').value || '0';
     const discountDisplay = discountVal.includes('%') ? discountVal : `${parseFloat(discountVal).toFixed(0)}%`;
 
-    const imgUrl = document.getElementById('deal-image-url').value.trim();
+    const imgUrl = getEl('deal-image-url').value.trim();
 
     // 2. Imagem de segurança (Indisponivel)
     const finalImg = imgUrl ? imgUrl : '/public/assets/img-ind.png';
 
-    const previewContainer = document.getElementById('preview-card-container');
+    const previewContainer = getEl('preview-card-container');
 
     // 3. HTML com o Estilo do deals_public.js (Injetando CSS direto para evitar conflito)
     previewContainer.innerHTML = `
@@ -653,7 +658,7 @@ window.openDealPreview = function () {
 
                 <div style="padding: 16px; text-align: left;">
                     <div style="display: flex; align-items: center; gap: 5px; color: #2196F3; font-weight: bold; font-size: 12px; margin-bottom: 8px;">
-                        <span>🏢</span> ${window.currentMerchant?.tradingName || 'Sua Loja'}
+                        <span>🏢</span> ${(window as any).currentMerchant?.tradingName || 'Sua Loja'}
                     </div>
                     
                     <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #1e293b;">${title}</h3>
@@ -665,8 +670,8 @@ window.openDealPreview = function () {
                     </div>
 
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b;">
-                        <p style="margin-bottom: 4px;">🕒 <strong>Horário:</strong> ${window.currentMerchant?.businessHours || 'Não informado'}</p>
-                        <p>📍 <strong>Local:</strong> ${window.currentMerchant?.location?.address || 'Endereço cadastrado'}, ${window.currentMerchant?.location?.number || ''}</p>
+                        <p style="margin-bottom: 4px;">🕒 <strong>Horário:</strong> ${(window as any).currentMerchant?.businessHours || 'Não informado'}</p>
+                        <p>📍 <strong>Local:</strong> ${(window as any).currentMerchant?.location?.address || 'Endereço cadastrado'}, ${(window as any).currentMerchant?.location?.number || ''}</p>
                     </div>
                 </div>
             </div>
@@ -675,7 +680,7 @@ window.openDealPreview = function () {
     `;
 
     // 4. Abrir Modal
-    const modal = document.getElementById('preview-modal');
+    const modal = getEl('preview-modal');
     if (modal) modal.classList.remove('hidden');
 
   } catch (error) {
@@ -697,13 +702,13 @@ export function setupDealForm() {
     });
     console.log('✅ Formulário de oferta configurado.');
 
-    const unlimitedCheckbox = document.getElementById('unlimited-stock');
-    const stockInput = document.getElementById('deal-stock');
+    const unlimitedCheckbox = getEl('unlimited-stock');
+    const stockInput = getEl('deal-stock');
 
     if (unlimitedCheckbox && stockInput) {
       unlimitedCheckbox.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          stockInput.value = 999999;
+        if ((e.target as HTMLInputElement).checked) {
+          stockInput.value = '999999';
           stockInput.disabled = true;
           stockInput.style.opacity = "0.5";
           stockInput.removeAttribute('required');
@@ -725,11 +730,11 @@ export function setupDealForm() {
 document.addEventListener('DOMContentLoaded', function () {
   // Observar quando a view de criar oferta for mostrada
   const observer = new MutationObserver(() => {
-    const createDealView = document.getElementById('view-create-deal');
+    const createDealView = getEl('view-create-deal');
     if (createDealView && createDealView.classList.contains('active')) {
       // Atualizar informações do merchant se disponíveis
-      if (window.currentMerchant) {
-        updateMerchantUI(window.currentMerchant);
+      if ((window as any).currentMerchant) {
+        updateMerchantUI((window as any).currentMerchant);
       }
     }
   });
@@ -742,11 +747,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ========== FUNÇÕES GLOBAIS ==========
 
-window.editDeal = async function (dealId) {
+(window as any).editDeal = async function (dealId) {
   alert('Função de edição em desenvolvimento. Deal ID: ' + dealId);
 };
 
-window.toggleDealStatus = async function (dealId, currentStock) {
+(window as any).toggleDealStatus = async function (dealId, currentStock) {
   try {
     // Buscar a oferta atual para saber o estoque total
     const dealRef = doc(db, 'deals', dealId);
@@ -805,7 +810,7 @@ window.toggleDealStatus = async function (dealId, currentStock) {
   }
 };
 
-window.deleteDeal = async function (dealId, dealTitle) {
+(window as any).deleteDeal = async function (dealId, dealTitle) {
   try {
     if (!confirm(`Tem certeza que deseja DELETAR "${dealTitle}"?\n\nEsta ação não pode ser desfeita.`)) {
       return;
@@ -826,8 +831,8 @@ window.deleteDeal = async function (dealId, dealTitle) {
 };
 
 // 1. Função para Fechar o Modal (Visualização)
-window.closePreview = function () {
-  const modal = document.getElementById('preview-modal');
+(window as any).closePreview = function () {
+  const modal = getEl('preview-modal');
   if (modal) {
     modal.classList.add('hidden');
     console.log('🙈 Preview fechado');
@@ -835,15 +840,15 @@ window.closePreview = function () {
 };
 
 // 2. Função para Cancelar/Resetar
-window.resetDealForm = function () {
+(window as any).resetDealForm = function () {
   // Primeiro fecha a visualização se estiver aberta
-  window.closePreview();
+  (window as any).closePreview();
 
-  const form = document.getElementById('deal-form');
+  const form = getEl('deal-form') as unknown as HTMLFormElement;
   if (form) {
     form.reset();
     // Força a limpeza do campo de desconto
-    const discountInput = document.getElementById('deal-discount');
+    const discountInput = getEl('deal-discount');
     if (discountInput) discountInput.value = '';
 
     console.log('🧹 Formulário resetado');
@@ -853,9 +858,9 @@ window.resetDealForm = function () {
 
 // Função para publicar a Oferta Relâmpago (24h)
 export async function publishFlashDeal() {
-  const title = document.getElementById('flash-title').value;
-  const price = parseFloat(document.getElementById('flash-price').value);
-  const imageFile = document.getElementById('flash-image').files[0];
+  const title = getEl('flash-title').value;
+  const price = parseFloat(getEl('flash-price').value);
+  const imageFile = getEl('flash-image').files[0];
   const merchantId = auth.currentUser?.uid;
 
   if (!merchantId || !title || !price || !imageFile) {
@@ -911,14 +916,14 @@ export async function publishFlashDeal() {
   }
 }
 
-window.publishFlashDeal = publishFlashDeal;
+(window as any).publishFlashDeal = publishFlashDeal;
 
 async function analyzeOfferWithAI(imageFile, title, price) {
   try {
     // 1. Converter imagem para base64
     const base64Data = await new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
       reader.readAsDataURL(imageFile);
     });
 

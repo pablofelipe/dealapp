@@ -9,11 +9,16 @@ import {
 import { geohashForLocation } from 'geofire-common';
 import { fetchCEP, geocodeMerchantAddress, validateCNPJ } from './merchant.js';
 
+/** Every element this file touches is read/written as a form input - cast once here. */
+function getEl(id: string): HTMLInputElement {
+  return document.getElementById(id) as HTMLInputElement;
+}
+
 // Elementos DOM
 let editMerchantForm = null;
 
 // Estado
-let currentMerchantData = null;
+let currentMerchantData: any = null;
 
 /**
  * Inicializa a funcionalidade de edição do merchant
@@ -59,7 +64,7 @@ export async function loadMerchantForEdit(uid) {
 /**
  * Busca dados do merchant do Firestore
  */
-async function getMerchantData(uid) {
+async function getMerchantData(uid): Promise<any> {
     try {
         const docRef = doc(db, "merchants", uid);
         const docSnap = await getDoc(docRef);
@@ -82,38 +87,38 @@ async function getMerchantData(uid) {
  */
 function populateEditForm(merchant) {
     // Dados da empresa
-    document.getElementById('edit-merchant-cnpj').value = formatCNPJ(merchant.cnpj || '');
-    document.getElementById('edit-merchant-business-name').value = merchant.businessName || '';
-    document.getElementById('edit-merchant-trading-name').value = merchant.tradingName || '';
-    document.getElementById('edit-merchant-category').value = merchant.category || '';
-    document.getElementById('edit-merchant-phone').value = formatPhone(merchant.phone || '');
+    getEl('edit-merchant-cnpj').value = formatCNPJ(merchant.cnpj || '');
+    getEl('edit-merchant-business-name').value = merchant.businessName || '';
+    getEl('edit-merchant-trading-name').value = merchant.tradingName || '';
+    getEl('edit-merchant-category').value = merchant.category || '';
+    getEl('edit-merchant-phone').value = formatPhone(merchant.phone || '');
 
     // Localização
     const loc = merchant.location || {};
-    document.getElementById('edit-merchant-cep').value = formatCEP(loc.cep || '');
-    document.getElementById('edit-merchant-state').value = loc.state || '';
-    document.getElementById('edit-merchant-city').value = loc.city || '';
-    document.getElementById('edit-merchant-neighborhood').value = loc.neighborhood || '';
-    document.getElementById('edit-merchant-address').value = loc.address || '';
-    document.getElementById('edit-merchant-number').value = loc.number || '';
-    document.getElementById('edit-merchant-complement').value = loc.complement || '';
+    getEl('edit-merchant-cep').value = formatCEP(loc.cep || '');
+    getEl('edit-merchant-state').value = loc.state || '';
+    getEl('edit-merchant-city').value = loc.city || '';
+    getEl('edit-merchant-neighborhood').value = loc.neighborhood || '';
+    getEl('edit-merchant-address').value = loc.address || '';
+    getEl('edit-merchant-number').value = loc.number || '';
+    getEl('edit-merchant-complement').value = loc.complement || '';
 
     if (loc.deliveryRadius) {
-        document.getElementById('edit-merchant-radius').value = loc.deliveryRadius;
+        getEl('edit-merchant-radius').value = loc.deliveryRadius;
     }
 
     // Contato
     const contact = merchant.contact || {};
-    document.getElementById('edit-merchant-responsible-name').value = contact.responsibleName || '';
-    document.getElementById('edit-merchant-responsible-email').value = contact.responsibleEmail || '';
-    document.getElementById('edit-merchant-responsible-phone').value = formatPhone(contact.responsiblePhone || '');
+    getEl('edit-merchant-responsible-name').value = contact.responsibleName || '';
+    getEl('edit-merchant-responsible-email').value = contact.responsibleEmail || '';
+    getEl('edit-merchant-responsible-phone').value = formatPhone(contact.responsiblePhone || '');
 
-    const vendorInput = document.getElementById('edit-vendorCode');
+    const vendorInput = getEl('edit-vendorCode');
     if (vendorInput) {
         vendorInput.value = merchant.vendorCode || 'Nenhum (Direto)';
     }
 
-    const hoursInput = document.getElementById('edit-merchant-hours');
+    const hoursInput = getEl('edit-merchant-hours');
     if (hoursInput) {
         hoursInput.value = merchant.businessHours || '';
     }
@@ -134,7 +139,7 @@ function saveOriginalData(merchant) {
  */
 function setupFormMasks() {
     // CNPJ
-    const cnpjInput = document.getElementById('edit-merchant-cnpj');
+    const cnpjInput = getEl('edit-merchant-cnpj');
     if (cnpjInput) {
         cnpjInput.addEventListener('input', function () {
             let value = this.value.replace(/\D/g, "");
@@ -148,7 +153,7 @@ function setupFormMasks() {
     }
 
     // CEP
-    const cepInput = document.getElementById('edit-merchant-cep');
+    const cepInput = getEl('edit-merchant-cep');
     if (cepInput) {
         cepInput.addEventListener('input', function () {
             let value = this.value.replace(/\D/g, "");
@@ -162,8 +167,8 @@ function setupFormMasks() {
 
     // Telefones
     const phoneInputs = [
-        document.getElementById('edit-merchant-phone'),
-        document.getElementById('edit-merchant-responsible-phone')
+        getEl('edit-merchant-phone'),
+        getEl('edit-merchant-responsible-phone')
     ];
 
     phoneInputs.forEach(input => {
@@ -189,7 +194,7 @@ function setupFormMasks() {
  * Configura busca automática de CEP
  */
 function setupCEPSearch() {
-    const cepInput = document.getElementById('edit-merchant-cep');
+    const cepInput = getEl('edit-merchant-cep');
     if (!cepInput) return;
 
     let timeoutId;
@@ -202,10 +207,10 @@ function setupCEPSearch() {
                 try {
                     const data = await fetchCEP(cep);
                     if (data) {
-                        document.getElementById('edit-merchant-address').value = data.address || '';
-                        document.getElementById('edit-merchant-neighborhood').value = data.neighborhood || '';
-                        document.getElementById('edit-merchant-city').value = data.city || '';
-                        document.getElementById('edit-merchant-state').value = data.state || '';
+                        getEl('edit-merchant-address').value = data.address || '';
+                        getEl('edit-merchant-neighborhood').value = data.neighborhood || '';
+                        getEl('edit-merchant-city').value = data.city || '';
+                        getEl('edit-merchant-state').value = data.state || '';
                     }
                 } catch (error) {
                     console.warn('CEP não encontrado ou erro na busca. error: ', error.message);
@@ -219,7 +224,7 @@ function setupCEPSearch() {
  * Configura o envio do formulário
  */
 function setupFormSubmit() {
-    editMerchantForm = document.getElementById('edit-merchant-form');
+    editMerchantForm = getEl('edit-merchant-form');
     if (!editMerchantForm) return;
 
     editMerchantForm.addEventListener('submit', async (e) => {
@@ -280,7 +285,7 @@ async function handleEditSubmit() {
         if (updatedMerchant) {
             currentMerchantData = updatedMerchant;
 
-            const merchantBadge = document.getElementById('merchant-name-badge');
+            const merchantBadge = getEl('merchant-name-badge');
             if (merchantBadge && updatedMerchant.tradingName) {
                 merchantBadge.textContent = updatedMerchant.tradingName;
                 merchantBadge.title = `CNPJ: ${updatedMerchant.cnpj || 'Não informado'}`;
@@ -291,7 +296,7 @@ async function handleEditSubmit() {
             localStorage.setItem('currentMerchant', JSON.stringify(updatedMerchant));
 
             // Atualizar variável global
-            window.currentMerchant = updatedMerchant;
+            (window as any).currentMerchant = updatedMerchant;
 
             console.log('✅ Atualização completa concluída');
         }
@@ -300,8 +305,8 @@ async function handleEditSubmit() {
 
         // Voltar para a view principal após 1 segundo
         setTimeout(() => {
-            if (typeof showView === 'function') {
-                showView('deals');
+            if (typeof (window as any).showView === 'function') {
+                (window as any).showView('deals');
             }
         }, 1000);
 
@@ -318,27 +323,27 @@ async function handleEditSubmit() {
  */
 function collectFormData() {
     return {
-        cnpj: document.getElementById('edit-merchant-cnpj').value,
-        businessName: document.getElementById('edit-merchant-business-name').value,
-        tradingName: document.getElementById('edit-merchant-trading-name').value,
-        category: document.getElementById('edit-merchant-category').value,
-        phone: document.getElementById('edit-merchant-phone').value,
+        cnpj: getEl('edit-merchant-cnpj').value,
+        businessName: getEl('edit-merchant-business-name').value,
+        tradingName: getEl('edit-merchant-trading-name').value,
+        category: getEl('edit-merchant-category').value,
+        phone: getEl('edit-merchant-phone').value,
 
         location: {
-            cep: document.getElementById('edit-merchant-cep').value,
-            state: document.getElementById('edit-merchant-state').value,
-            city: document.getElementById('edit-merchant-city').value,
-            neighborhood: document.getElementById('edit-merchant-neighborhood').value,
-            address: document.getElementById('edit-merchant-address').value,
-            number: document.getElementById('edit-merchant-number').value,
-            complement: document.getElementById('edit-merchant-complement').value,
-            deliveryRadius: parseInt(document.getElementById('edit-merchant-radius').value) || 5
+            cep: getEl('edit-merchant-cep').value,
+            state: getEl('edit-merchant-state').value,
+            city: getEl('edit-merchant-city').value,
+            neighborhood: getEl('edit-merchant-neighborhood').value,
+            address: getEl('edit-merchant-address').value,
+            number: getEl('edit-merchant-number').value,
+            complement: getEl('edit-merchant-complement').value,
+            deliveryRadius: parseInt(getEl('edit-merchant-radius').value) || 5
         },
 
         contact: {
-            responsibleName: document.getElementById('edit-merchant-responsible-name').value,
-            responsibleEmail: document.getElementById('edit-merchant-responsible-email').value,
-            responsiblePhone: document.getElementById('edit-merchant-responsible-phone').value
+            responsibleName: getEl('edit-merchant-responsible-name').value,
+            responsibleEmail: getEl('edit-merchant-responsible-email').value,
+            responsiblePhone: getEl('edit-merchant-responsible-phone').value
         }
     };
 }
@@ -433,7 +438,7 @@ function checkForChanges(newData) {
  */
 function prepareUpdateData(formData) {
     const originalData = JSON.parse(sessionStorage.getItem('originalMerchantData') || '{}');
-    const updateData = {};
+    const updateData: any = {};
 
     // Dados da empresa
     if (cleanForComparison(formData.cnpj) !== cleanForComparison(originalData.cnpj)) {
@@ -573,7 +578,7 @@ function updateLocalData(updateData) {
         console.error('❌ Erro ao salvar no localStorage:', e);
     }
 
-    const merchantBadge = document.getElementById('merchant-name-badge');
+    const merchantBadge = getEl('merchant-name-badge');
     if (merchantBadge && currentMerchantData.tradingName) {
         merchantBadge.textContent = currentMerchantData.tradingName;
         merchantBadge.title = `CNPJ: ${currentMerchantData.cnpj || 'Não informado'}`;
@@ -581,7 +586,7 @@ function updateLocalData(updateData) {
     }
 
     // Atualizar variável global (simples)
-    window.currentMerchant = currentMerchantData;
+    (window as any).currentMerchant = currentMerchantData;
 
     console.log('✅ Dados locais atualizados');
 }
@@ -650,7 +655,7 @@ async function generateGeohash(lat, lng) {
  * Mostra/oculta loading
  */
 function showLoading(show) {
-    const loadingElement = document.getElementById('loading') ||
+    const loadingElement = getEl('loading') ||
         document.querySelector('.loading');
     if (loadingElement) {
         loadingElement.style.display = show ? 'flex' : 'none';

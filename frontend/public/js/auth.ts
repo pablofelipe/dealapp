@@ -3,7 +3,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  type User,
 } from 'firebase/auth';
 
 const provider = new GoogleAuthProvider();
@@ -29,6 +30,6 @@ export async function logout() {
 }
 
 // Observar estado de autenticação
-export function observeAuthState(callback) {
+export function observeAuthState(callback: (user: User | null) => void) {
   onAuthStateChanged(auth, callback);
 }

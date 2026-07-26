@@ -29,7 +29,7 @@ export async function checkMerchantProfile(uid) {
             return {
                 id: docSnap.id,
                 ...docSnap.data()
-            };
+            } as any;
         } else {
             console.log('📭 Nenhum perfil encontrado');
             return null;

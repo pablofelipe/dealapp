@@ -18,8 +18,8 @@ visible from reading any single file in isolation.
 | 1 | Stock/coupon mutation is client-authoritative with no real transaction | P0 | Correctness / trust boundary | **Fixed** |
 | 2 | The only transactional, server-side coupon logic exists but is never deployed | P0 | Dead code / architectural drift | **Fixed** |
 | 3 | Firestore rules and indexes exist in two diverging copies; only one is live | P0 | Configuration risk | **Fixed** |
-| 4 | Domain model is anemic; business rules live inline in DOM-manipulating code | P1 | DDD violation | **Fixed** (in `functions/`; frontends still open, see #5) |
-| 5 | Both frontends have no build pipeline, no TypeScript, no test runner | P1 | TDD enabler / foundational | Open |
+| 4 | Domain model is anemic; business rules live inline in DOM-manipulating code | P1 | DDD violation | **Fixed** (`functions/src/domain/`; client-side duplication consolidated into `frontend/shared/domain/`, see roadmap step 6) |
+| 5 | Both frontends have no build pipeline, no TypeScript, no test runner | P1 | TDD enabler / foundational | **Fixed** |
 | 6 | Geo-proximity data (`geohash`) is written but never queried; declared dependency unused | P2 | Dead data modeling | **Fixed** |
 | 7 | No test suite anywhere in the repository | P1 | TDD enabler | **Fixed** for `functions/` and pure logic in both frontends; component/DOM testing open |
 | 8 | Storage rules allow any authenticated user to write to any path | P2 | Security hardening | **Fixed** |
@@ -219,6 +219,12 @@ frontends — avoids the anti-pattern of introducing domain layers in a place th
 
 ## Finding 5 — No build pipeline in either frontend
 
+> **Resolved.** `frontend/` is a Vite project covering the customer PWA, merchant panel, and landing
+> page (see below). The TypeScript-conversion half, originally deferred as a separate step, is now
+> also done: every source file under `frontend/{public,merchant}/js/` and `frontend/shared/` is `.ts`,
+> type-checked with `npx tsc --noEmit` (`frontend/tsconfig.json`, pragmatic — `strict: false`, real
+> interfaces for domain data in `frontend/shared/types.ts`, looser typing for DOM-heavy UI code).
+
 **Where:** `public/` and `merchant/` load Firebase directly from
 `https://www.gstatic.com/firebasejs/10.7.1/...` via native `<script type="module">`, with no bundler,
 no TypeScript, and no test runner in either directory.
@@ -318,10 +324,9 @@ path in the bucket.
 
 ## Roadmap
 
-Steps 1-4 and 7 below are **done** and deployed to production (`deal-application`). Step 5 is **done**
-for the build pipeline itself; the TypeScript-conversion half of the original finding is a deliberate,
-separate follow-up (see below). Only step 6 (client-side domain/application layer) and the
-component/DOM-testing half of step 4 remain open.
+Steps 1-3, 5-7 below are **done** and deployed to production (`deal-application`). Step 5 now covers
+both the build pipeline and the TypeScript conversion (see below) — the two were deliberately sequenced
+as separate changes but are both complete. Only the component/DOM-testing half of step 4 remains open.
 
 1. ~~**P0 — Server-authoritative coupon/stock flow.**~~ **Done.** New implementation in
    `functions/src/{domain,application,callable}/`, `functions/index.js` wires in the compiled
@@ -340,9 +345,17 @@ component/DOM-testing half of step 4 remain open.
    functions.
 5. ~~**P1 — Build pipeline for both frontends.**~~ **Done.** Fix for Finding 5: `frontend/` is now a
    Vite project (source separate from `dist/` build output), covering the customer PWA, merchant panel,
-   and landing page, with CI building it before deploy. **Deliberately not done in this pass:**
-   converting the `.js` files to TypeScript — scoped out from the start as a separate, later change so
-   the bundler migration and a language migration didn't happen as one undifferentiated risk.
+   and landing page, with CI building it before deploy. The bundler migration and the TypeScript
+   conversion were deliberately sequenced as two separate changes rather than one undifferentiated
+   risk; the TypeScript conversion (every file under `frontend/{public,merchant}/js/` and
+   `frontend/shared/`) is now also done, `strict: false` and pragmatic (real interfaces for domain
+   data, looser typing where DOM access dominates). Fixed a handful of real bugs surfaced by the
+   conversion along the way: `merchant/js/app.ts`'s FCM-token-equivalent flow in `public/js/app.ts`
+   (`enableNotifications`) returned `undefined` on the success path because an inner `const token`
+   shadowed the outer one; `merchant/js/app.ts` had two competing `updateMerchantInfo` definitions
+   (the second silently always won) and dead code referencing a `create-deal-form`/
+   `handleCreateDealSubmit` pair and a `closeAllModals` function that never existed — replaced with
+   the already-working `closePreview`.
 6. ~~**P2 — Domain/application layer in both frontends.**~~ **Done, scoped to what was actually
    duplicated.** `frontend/shared/domain/{deal,coupon}.js` consolidates the expiry/status checks that
    had drifted into ~5 inconsistent ad-hoc implementations across `public/js`/`merchant/js` — not a

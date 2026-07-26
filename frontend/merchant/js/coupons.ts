@@ -10,11 +10,12 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { getCouponStatus } from '../../shared/domain/coupon.js';
 import { isDealAvailable } from '../../shared/domain/deal.js';
+import type { Coupon, Deal } from '../../shared/types.js';
 
 // Setup do validador de cupons
 export function setupCouponValidation() {
   const validateBtn = document.getElementById('validate-btn');
-  const couponInput = document.getElementById('coupon-code');
+  const couponInput = document.getElementById('coupon-code') as HTMLInputElement | null;
 
   if (!validateBtn || !couponInput) return;
 
@@ -38,7 +39,8 @@ export function setupCouponValidation() {
 
   // Aceitar apenas números
   couponInput.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    const target = e.target as HTMLInputElement;
+    target.value = target.value.replace(/[^0-9]/g, '');
   });
 }
 
@@ -62,7 +64,7 @@ async function validateCoupon(code) {
     }
 
     const couponDoc = snapshot.docs[0];
-    const coupon = { id: couponDoc.id, ...couponDoc.data() };
+    const coupon = { id: couponDoc.id, ...couponDoc.data() } as Coupon;
 
     // Verificar status (expiração é checada antes do status - ver shared/domain/coupon.js)
     const status = getCouponStatus(coupon);
@@ -153,7 +155,7 @@ function mapRedeemErrorToMessage(error) {
 
 // Confirmar resgate do cupom. A validação (status/expiração/permissão) e a atualização atômica
 // de coupons + users são feitas pela Cloud Function `redeemCoupon` (server-authoritative).
-window.confirmRedemption = async function (couponId, couponCode) {
+(window as any).confirmRedemption = async function (couponId: string, couponCode: string) {
   try {
     if (!confirm(`Confirmar o uso do cupom ${couponCode}?`)) {
       return;
@@ -161,13 +163,13 @@ window.confirmRedemption = async function (couponId, couponCode) {
 
     console.log('🎫 Resgatando cupom:', couponCode);
 
-    const redeemCoupon = httpsCallable(functions, 'redeemCoupon');
+    const redeemCoupon = httpsCallable<{ couponId: string; couponCode: string }, { savings: number }>(functions, 'redeemCoupon');
     const result = await redeemCoupon({ couponId, couponCode });
     const savings = result.data.savings;
 
     alert(`✅ Cupom resgatado com sucesso!\n\nEconomia gerada para o cliente: R$ ${savings.toFixed(2)}`);
 
-    const codeInput = document.getElementById('coupon-code');
+    const codeInput = document.getElementById('coupon-code') as HTMLInputElement | null;
     const resultDiv = document.getElementById('validation-result');
 
     if (codeInput) codeInput.value = '';
@@ -204,7 +206,7 @@ export async function loadStats(merchantId) {
 
     // Contar deals ativos
     dealsSnapshot.docs.forEach(doc => {
-      const deal = doc.data();
+      const deal = doc.data() as Deal;
       if (isDealAvailable(deal)) {
         activeDeals++;
       }
@@ -235,9 +237,9 @@ export async function loadStats(merchantId) {
     }
 
     // Atualizar UI
-    document.getElementById('stat-deals').textContent = activeDeals;
-    document.getElementById('stat-coupons').textContent = totalCoupons;
-    document.getElementById('stat-redeemed').textContent = redeemedCoupons;
+    document.getElementById('stat-deals')!.textContent = activeDeals.toString();
+    document.getElementById('stat-coupons')!.textContent = totalCoupons.toString();
+    document.getElementById('stat-redeemed')!.textContent = redeemedCoupons.toString();
     document.getElementById('stat-revenue').textContent = `R$ ${totalRevenue.toFixed(2)}`;
 
     console.log('✅ Estatísticas carregadas:', {

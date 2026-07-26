@@ -4,15 +4,19 @@ import { setupCouponValidation, loadStats } from './coupons.js';
 import { checkMerchantProfile, saveMerchantProfile } from './merchant.js';
 import { initializeEditMerchant, loadMerchantForEdit } from './edit-merchant.js';
 
+function getEl(id: string): HTMLInputElement {
+  return document.getElementById(id) as HTMLInputElement;
+}
+
 // Elementos DOM
-const loading = document.getElementById('loading');
-const loginScreen = document.getElementById('login-screen');
-const registerScreen = document.getElementById('register-screen');
-const panel = document.getElementById('panel');
+const loading = document.getElementById('loading') as HTMLElement;
+const loginScreen = document.getElementById('login-screen') as HTMLElement;
+const registerScreen = document.getElementById('register-screen') as HTMLElement;
+const panel = document.getElementById('panel') as HTMLElement;
 const googleLoginBtn = document.getElementById('google-login-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const userPhoto = document.getElementById('user-photo');
-const userName = document.getElementById('user-name');
+const userPhoto = document.getElementById('user-photo') as HTMLImageElement | null;
+const userName = document.getElementById('user-name') as HTMLElement | null;
 
 const navButtons = document.querySelectorAll('.nav-btn');
 
@@ -45,7 +49,7 @@ function initializeApp() {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('ref');
   if (code) {
-    const vendorInput = document.getElementById('vendorCode');
+    const vendorInput = getEl('vendorCode');
     if (vendorInput) {
       vendorInput.value = code.toUpperCase();
     }
@@ -66,26 +70,26 @@ window.addEventListener('beforeunload', () => {
 
 // ========== GESTÃO DE EVENT LISTENERS ==========
 const eventListenersManager = {
-  listeners: new Map(),
+  listeners: new Map<EventTarget, { event: string; handler: EventListener }[]>(),
 
-  add(element, event, handler, options) {
+  add(element: EventTarget, event: string, handler: EventListener, options?: boolean | AddEventListenerOptions) {
     if (!this.listeners.has(element)) {
       this.listeners.set(element, []);
     }
     element.addEventListener(event, handler, options);
-    this.listeners.get(element).push({ event, handler });
+    this.listeners.get(element)!.push({ event, handler });
   },
 
-  removeAll(element) {
+  removeAll(element: EventTarget) {
     if (this.listeners.has(element)) {
-      this.listeners.get(element).forEach(({ event, handler }) => {
+      this.listeners.get(element)!.forEach(({ event, handler }) => {
         element.removeEventListener(event, handler);
       });
       this.listeners.delete(element);
     }
   },
 
-  removeAllFromSelector(selector) {
+  removeAllFromSelector(selector: string) {
     document.querySelectorAll(selector).forEach(element => {
       this.removeAll(element);
     });
@@ -102,9 +106,9 @@ const eventListenersManager = {
 };
 
 // Função helper para debounce
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
+function debounce(func: (...args: any[]) => void, wait: number) {
+  let timeout: ReturnType<typeof setTimeout>;
+  return function executedFunction(...args: any[]) {
     const later = () => {
       clearTimeout(timeout);
       func(...args);
@@ -137,8 +141,8 @@ function setupEventListeners() {
   // Usamos delegação de eventos na bottom-nav para ser mais eficiente
   const bottomNav = document.querySelector('.bottom-nav');
   if (bottomNav) {
-    eventListenersManager.add(bottomNav, 'click', async (e) => {
-      const btn = e.target.closest('.nav-btn'); // Pega o botão mesmo clicando no ícone/span
+    eventListenersManager.add(bottomNav, 'click', (async (e: MouseEvent) => {
+      const btn = (e.target as HTMLElement).closest('.nav-btn') as HTMLElement | null; // Pega o botão mesmo clicando no ícone/span
       if (!btn) return;
 
       // Caso especial: Botão de Sair
@@ -157,22 +161,22 @@ function setupEventListeners() {
       // Navegação normal
       const view = btn.dataset.view;
       if (view) showView(view);
-    });
+    }) as EventListener);
   }
 
   // 3. Cliques Globais (Botão Voltar e Fechar Modais)
-  eventListenersManager.add(document, 'click', (e) => {
+  eventListenersManager.add(document, 'click', ((e: MouseEvent) => {
     // Botão Voltar
-    if (e.target.closest('.btn-back')) {
+    if ((e.target as HTMLElement).closest('.btn-back')) {
       showView('deals');
       return;
     }
 
     // Fechar modais (se houver um fundo clicável)
-    if (e.target.classList.contains('modal')) {
-      closeAllModals();
+    if ((e.target as HTMLElement).classList.contains('modal')) {
+      (window as any).closePreview?.();
     }
-  });
+  }) as EventListener);
 
   setupNavHighlight();
 }
@@ -197,9 +201,9 @@ function setupRegisterForm() {
 
 function setupFormMasks() {
   // CNPJ
-  const cnpjInput = document.getElementById('merchant-cnpj');
+  const cnpjInput = getEl('merchant-cnpj');
   if (cnpjInput) {
-    cnpjInput.addEventListener('input', function () {
+    cnpjInput.addEventListener('input', function (this: HTMLInputElement) {
       let value = this.value.replace(/\D/g, "");
       if (value.length > 14) value = value.slice(0, 14);
       value = value.replace(/^(\d{2})(\d)/, "$1.$2");
@@ -211,9 +215,9 @@ function setupFormMasks() {
   }
 
   // CEP
-  const cepInput = document.getElementById('merchant-cep');
+  const cepInput = getEl('merchant-cep');
   if (cepInput) {
-    cepInput.addEventListener('input', function () {
+    cepInput.addEventListener('input', function (this: HTMLInputElement) {
       let value = this.value.replace(/\D/g, "");
       if (value.length > 8) value = value.slice(0, 8);
       if (value.length > 5) {
@@ -225,13 +229,13 @@ function setupFormMasks() {
 
   // Telefone
   const phoneInputs = [
-    document.getElementById('merchant-phone'),
-    document.getElementById('merchant-responsible-phone')
+    getEl('merchant-phone'),
+    getEl('merchant-responsible-phone')
   ];
 
   phoneInputs.forEach(input => {
     if (input) {
-      input.addEventListener('input', function () {
+      input.addEventListener('input', function (this: HTMLInputElement) {
         let value = this.value.replace(/\D/g, "");
         if (value.length > 11) value = value.slice(0, 11);
 
@@ -249,10 +253,10 @@ function setupFormMasks() {
 }
 
 function setupCEPSearch() {
-  const cepInput = document.getElementById('merchant-cep');
+  const cepInput = getEl('merchant-cep');
   if (!cepInput) return;
 
-  cepInput.addEventListener('blur', async function () {
+  cepInput.addEventListener('blur', async function (this: HTMLInputElement) {
     const cep = this.value.replace(/\D/g, '');
     if (cep.length === 8) {
       try {
@@ -260,10 +264,10 @@ function setupCEPSearch() {
         const data = await response.json();
 
         if (!data.erro) {
-          document.getElementById('merchant-address').value = data.logradouro || '';
-          document.getElementById('merchant-neighborhood').value = data.bairro || '';
-          document.getElementById('merchant-city').value = data.localidade || '';
-          document.getElementById('merchant-state').value = data.uf || '';
+          getEl('merchant-address').value = data.logradouro || '';
+          getEl('merchant-neighborhood').value = data.bairro || '';
+          getEl('merchant-city').value = data.localidade || '';
+          getEl('merchant-state').value = data.uf || '';
         }
       } catch (error) {
         console.error('❌ Erro ao buscar CEP:', error);
@@ -278,29 +282,29 @@ async function handleRegisterSubmit() {
 
     // Coletar dados do formulário
     const formData = {
-      cnpj: document.getElementById('merchant-cnpj').value,
-      businessName: document.getElementById('merchant-business-name').value,
-      tradingName: document.getElementById('merchant-trading-name').value,
-      category: document.getElementById('merchant-category').value,
-      phone: document.getElementById('merchant-phone').value,
-      businessHours: document.getElementById('businessHours').value || '',
+      cnpj: getEl('merchant-cnpj').value,
+      businessName: getEl('merchant-business-name').value,
+      tradingName: getEl('merchant-trading-name').value,
+      category: getEl('merchant-category').value,
+      phone: getEl('merchant-phone').value,
+      businessHours: getEl('businessHours').value || '',
 
       location: {
-        cep: document.getElementById('merchant-cep').value,
-        state: document.getElementById('merchant-state').value,
-        city: document.getElementById('merchant-city').value,
-        neighborhood: document.getElementById('merchant-neighborhood').value,
-        address: document.getElementById('merchant-address').value,
-        number: document.getElementById('merchant-number').value,
-        complement: document.getElementById('merchant-complement').value,
-        deliveryRadius: parseInt(document.getElementById('merchant-radius').value) || 5,
+        cep: getEl('merchant-cep').value,
+        state: getEl('merchant-state').value,
+        city: getEl('merchant-city').value,
+        neighborhood: getEl('merchant-neighborhood').value,
+        address: getEl('merchant-address').value,
+        number: getEl('merchant-number').value,
+        complement: getEl('merchant-complement').value,
+        deliveryRadius: parseInt(getEl('merchant-radius').value) || 5,
         deliveryOptions: ['pickup']
       },
 
       contact: {
-        responsibleName: document.getElementById('merchant-responsible-name').value,
-        responsibleEmail: document.getElementById('merchant-responsible-email').value,
-        responsiblePhone: document.getElementById('merchant-responsible-phone').value
+        responsibleName: getEl('merchant-responsible-name').value,
+        responsibleEmail: getEl('merchant-responsible-email').value,
+        responsiblePhone: getEl('merchant-responsible-phone').value
       }
     };
 
@@ -340,7 +344,7 @@ async function handleAuthStateChange(user) {
   showLoading(false);
   console.log('🔐 Estado de autenticação alterado:', user?.email);
 
-  const navContainer = document.querySelector('.bottom-nav');
+  const navContainer = document.querySelector('.bottom-nav') as HTMLElement | null;
 
   if (navContainer) navContainer.style.display = 'none';
 
@@ -386,7 +390,7 @@ async function handleAuthStateChange(user) {
 
     // Limpar cache ao deslogar
     localStorage.removeItem('currentMerchant');
-    window.currentMerchant = null;
+    (window as any).currentMerchant = null;
 
     loginScreen.style.display = 'flex';
     registerScreen.style.display = 'none';
@@ -397,43 +401,7 @@ async function handleAuthStateChange(user) {
 }
 
 // ========== GERENCIAMENTO DO MERCHANT BADGE ==========
-window.updateMerchantInfo = function (merchantData) {
-  // Verificação básica de segurança
-  if (!merchantData || typeof merchantData !== 'object') {
-    console.warn('updateMerchantInfo: dados inválidos');
-    return false;
-  }
-
-  console.log('ℹ️ updateMerchantInfo chamado para:', merchantData.tradingName);
-
-  // Atualizar badge do merchant (APENAS SE NECESSÁRIO)
-  const merchantBadge = document.getElementById('merchant-name-badge');
-  if (merchantBadge) {
-    const newName = merchantData.tradingName || merchantData.businessName || 'Lojista';
-
-    // VERIFICAR SE JÁ ESTÁ COM O NOME CORRETO
-    if (merchantBadge.textContent === newName) {
-      console.log('✓ Badge já está correto:', newName);
-    } else {
-      merchantBadge.textContent = newName;
-      merchantBadge.title = `CNPJ: ${merchantData.cnpj || 'Não informado'}`;
-      console.log('✓ Badge atualizado:', newName);
-    }
-  }
-
-  // Atualizar variável global (simples)
-  window.currentMerchant = merchantData;
-
-  // Salvar no localStorage (sem eventos)
-  try {
-    localStorage.setItem('currentMerchant', JSON.stringify(merchantData));
-    console.log('✓ Dados salvos no localStorage');
-  } catch (e) {
-    console.error('Erro ao salvar no localStorage:', e);
-  }
-
-  return true;
-};
+// (updateMerchantInfo é definida mais abaixo, com guarda contra chamadas concorrentes)
 
 // Modifique handleNewLogin ou onde você recebe os dados do merchant:
 async function handleNewLogin(user) {
@@ -469,10 +437,10 @@ function showRegisterScreen() {
 
   // Preencher e-mail automaticamente se tiver usuário
   if (currentUser) {
-    const emailField = document.getElementById('merchant-responsible-email');
+    const emailField = getEl('merchant-responsible-email');
     if (emailField) emailField.value = currentUser.email || '';
 
-    const nameField = document.getElementById('merchant-responsible-name');
+    const nameField = getEl('merchant-responsible-name');
     if (nameField && currentUser.displayName) {
       nameField.value = currentUser.displayName;
     }
@@ -500,7 +468,7 @@ function showLoading(show) {
 let isChangingView = false;
 let pendingViewChange = null;
 
-window.showView = async function (viewName) {
+async function showView(viewName: string) {
   // Se já está mudando, agendar próxima mudança
   if (isChangingView) {
     pendingViewChange = viewName;
@@ -542,7 +510,7 @@ window.showView = async function (viewName) {
 
     // 2. Atualizar navegação
     navButtons.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.view === viewName);
+      btn.classList.toggle('active', (btn as HTMLElement).dataset.view === viewName);
     });
 
     // 3. Mostrar/ocultar views
@@ -562,8 +530,8 @@ window.showView = async function (viewName) {
     // 5. Carregar dados da nova view
     await loadViewData(viewName);
 
-    if (window.closePreview) {
-      window.closePreview();
+    if ((window as any).closePreview) {
+      (window as any).closePreview();
     }
 
   } catch (error) {
@@ -578,9 +546,10 @@ window.showView = async function (viewName) {
       setTimeout(() => showView(nextView), 50);
     }
   }
-};
+}
+(window as any).showView = showView;
 
-let currentViewListeners = new Set();
+let currentViewListeners = new Set<{ element: EventTarget; event: string; handler: EventListener }>();
 
 function cleanupCurrentView() {
   // Limpar event listeners específicos da view atual
@@ -592,7 +561,7 @@ function cleanupCurrentView() {
   currentViewListeners.clear();
 }
 
-function addViewListener(element, event, handler) {
+function addViewListener(element: EventTarget, event: string, handler: EventListener) {
   element.addEventListener(event, handler);
   currentViewListeners.add({ element, event, handler });
 }
@@ -632,34 +601,29 @@ async function loadViewData(viewName) {
 }
 
 function setupCreateDealListeners() {
-  const form = document.getElementById('create-deal-form');
   const descriptionField = document.getElementById('deal-description');
-
-  if (form) {
-    addViewListener(form, 'submit', handleCreateDealSubmit);
-  }
 
   if (descriptionField) {
     // Debounce mais longo para campo de descrição
-    const debouncedHandler = debounce(function (e) {
+    const debouncedHandler = debounce(function (e: Event) {
       // Atualizar contador de caracteres se houver
-      const charCount = e.target.value.length;
+      const charCount = (e.target as HTMLTextAreaElement).value.length;
       const counter = document.getElementById('description-counter');
       if (counter) {
         counter.textContent = `${charCount}/500`;
       }
     }, 500); // 500ms para não travar
 
-    addViewListener(descriptionField, 'input', debouncedHandler);
+    addViewListener(descriptionField, 'input', debouncedHandler as EventListener);
   }
 }
 
 function updateMerchantBadge() {
-  if (!window.currentMerchant?.tradingName) return;
+  if (!(window as any).currentMerchant?.tradingName) return;
 
   const badge = document.getElementById('merchant-name-badge');
-  if (badge && badge.textContent !== window.currentMerchant.tradingName) {
-    badge.textContent = window.currentMerchant.tradingName;
+  if (badge && badge.textContent !== (window as any).currentMerchant.tradingName) {
+    badge.textContent = (window as any).currentMerchant.tradingName;
   }
 }
 
@@ -669,24 +633,24 @@ function updateMerchantBadge() {
  * Garante que os cálculos de desconto funcionem
  */
 export function setupDiscountCalculator() {
-  const originalPriceInput = document.getElementById('deal-original-price');
-  const dealPriceInput = document.getElementById('deal-price');
-  const discountInput = document.getElementById('deal-discount');
+  const originalPriceInput = getEl('deal-original-price');
+  const dealPriceInput = getEl('deal-price');
+  const discountInput = getEl('deal-discount');
 
   // VERIFICAÇÃO DE SEGURANÇA: Só prossegue se os campos existirem
   if (!originalPriceInput || !dealPriceInput || !discountInput) {
     return;
   }
 
-  let lastActiveField = null;
+  let lastActiveField: string | null = null;
 
   // Funções auxiliares (internas para não poluir o escopo global)
-  const parseNumber = (value) => {
+  const parseNumber = (value: string) => {
     if (!value) return 0;
     return parseFloat(String(value).replace(',', '.')) || 0;
   };
 
-  const formatNumber = (num) => num.toFixed(2).replace('.', ',');
+  const formatNumber = (num: number) => num.toFixed(2).replace('.', ',');
 
   const calculate = () => {
     const original = parseNumber(originalPriceInput.value);
@@ -719,7 +683,7 @@ function setupDealFormWithMerchantData() {
 
     if (currentMerchant && currentMerchant.location) {
       // Preencher campos de localização (somente leitura)
-      const addressField = document.getElementById('deal-address');
+      const addressField = getEl('deal-address');
       if (addressField && !addressField.value) {
         const loc = currentMerchant.location;
         addressField.value = `${loc.address}, ${loc.number} - ${loc.neighborhood}, ${loc.city} - ${loc.state}`;
@@ -727,15 +691,15 @@ function setupDealFormWithMerchantData() {
         addressField.title = "Endereço definido no cadastro do estabelecimento";
       }
 
-      const neighborhoodField = document.getElementById('deal-neighborhood');
+      const neighborhoodField = getEl('deal-neighborhood');
       if (neighborhoodField && !neighborhoodField.value) {
         neighborhoodField.value = currentMerchant.location.neighborhood;
         neighborhoodField.readOnly = true;
       }
 
-      const radiusField = document.getElementById('deal-radius');
+      const radiusField = getEl('deal-radius');
       if (radiusField) {
-        radiusField.value = currentMerchant.location.deliveryRadius || 5;
+        radiusField.value = (currentMerchant.location.deliveryRadius || 5).toString();
         radiusField.disabled = true;
         radiusField.title = "Raio de atendimento definido no cadastro";
       }
@@ -743,7 +707,7 @@ function setupDealFormWithMerchantData() {
   }
 
   // Adicionar ao loadViewData para ser chamado quando a view for carregada
-  window.initCreateDealForm = initCreateDealForm;
+  (window as any).initCreateDealForm = initCreateDealForm;
 }
 
 async function loadInitialData() {
@@ -870,7 +834,7 @@ if (!document.querySelector('#app-notification-styles')) {
 
 let isUpdatingMerchant = false;
 
-window.updateMerchantInfo = function (merchantData, forceUpdate = false) {
+function updateMerchantInfo(merchantData: any, forceUpdate = false) {
 
   if (isUpdatingMerchant) {
     console.log('⚠️ updateMerchantInfo já em execução, ignorando chamada...');
@@ -908,7 +872,7 @@ window.updateMerchantInfo = function (merchantData, forceUpdate = false) {
     }
 
     // Atualizar variável global (sem disparar eventos)
-    window.currentMerchant = merchantData;
+    (window as any).currentMerchant = merchantData;
 
     // Salvar no localStorage (operação segura)
     try {
@@ -921,12 +885,14 @@ window.updateMerchantInfo = function (merchantData, forceUpdate = false) {
   } finally {
     isUpdatingMerchant = false;
   }
-};
+}
+(window as any).updateMerchantInfo = updateMerchantInfo;
 
 // Função auxiliar para obter o merchant atual
-window.getCurrentMerchant = function () {
-  return window.currentMerchant;
-};
+function getCurrentMerchant() {
+  return (window as any).currentMerchant;
+}
+(window as any).getCurrentMerchant = getCurrentMerchant;
 
 async function syncMerchantData() {
   if (!currentUser || !currentUser.uid) {
@@ -948,8 +914,8 @@ async function syncMerchantData() {
       currentMerchant = merchantProfile;
 
       // Atualizar badge
-      if (typeof window.updateMerchantInfo === 'function') {
-        window.updateMerchantInfo(merchantProfile);
+      if (typeof updateMerchantInfo === 'function') {
+        updateMerchantInfo(merchantProfile);
       } else {
         // Fallback: atualizar diretamente
         const badge = document.getElementById('merchant-name-badge');
@@ -1016,21 +982,22 @@ export { currentUser, currentMerchant };
 
 
 // Dentro do setupEventListeners() no app.js
-const flashImageInput = document.getElementById('flash-image');
+const flashImageInput = document.getElementById('flash-image') as HTMLInputElement | null;
 if (flashImageInput) {
-  flashImageInput.addEventListener('change', function (e) {
+  flashImageInput.addEventListener('change', function (e: Event) {
     const reader = new FileReader();
-    reader.onload = function (event) {
-      const preview = document.getElementById('flash-preview');
-      preview.innerHTML = `<img src="${event.target.result}" style="width: 100%; border-radius: 10px; margin-top: 10px;">`;
+    reader.onload = function (event: ProgressEvent<FileReader>) {
+      const preview = document.getElementById('flash-preview') as HTMLElement | null;
+      if (preview) preview.innerHTML = `<img src="${event.target?.result}" style="width: 100%; border-radius: 10px; margin-top: 10px;">`;
     };
-    reader.readAsDataURL(e.target.files[0]);
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (file) reader.readAsDataURL(file);
   });
 }
 
 // Vincule o clique do botão de publicar
 document.getElementById('btn-publish-flash')?.addEventListener('click', () => {
-  window.publishFlashDeal();
+  publishFlashDeal();
 });
 
 function setupNavHighlight() {
@@ -1046,7 +1013,7 @@ function setupNavHighlight() {
 
       // Pega o ID da view e muda a tela
       const viewId = btn.getAttribute('data-view');
-      showView(viewId);
+      if (viewId) showView(viewId);
     });
   });
 }
@@ -1058,18 +1025,18 @@ function setupFlashDealView() {
   console.log('⚡ Inicializando view Flash Deal');
 
   // Configurar o input de imagem
-  const flashImageInput = document.getElementById('flash-image');
-  const flashPreview = document.getElementById('flash-preview');
+  const flashImageInput = document.getElementById('flash-image') as HTMLInputElement | null;
+  const flashPreview = document.getElementById('flash-preview') as HTMLElement | null;
 
   if (flashImageInput && flashPreview) {
-    flashImageInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
+    flashImageInput.addEventListener('change', function (e: Event) {
+      const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = function (event) {
+        reader.onload = function (event: ProgressEvent<FileReader>) {
           flashPreview.innerHTML = `
             <div style="margin-top: 10px;">
-              <img src="${event.target.result}" style="width: 100%; max-width: 300px; border-radius: 10px;">
+              <img src="${event.target?.result}" style="width: 100%; max-width: 300px; border-radius: 10px;">
               <button type="button" onclick="clearFlashImage()" style="margin-top: 10px; padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 5px; cursor: pointer;">
                 ✕ Remover Imagem
               </button>
@@ -1089,27 +1056,28 @@ function setupFlashDealView() {
 }
 
 // Função para limpar a imagem flash
-window.clearFlashImage = function () {
-  const flashImageInput = document.getElementById('flash-image');
-  const flashPreview = document.getElementById('flash-preview');
+function clearFlashImage() {
+  const flashImageInput = document.getElementById('flash-image') as HTMLInputElement | null;
+  const flashPreview = document.getElementById('flash-preview') as HTMLElement | null;
 
   if (flashImageInput) flashImageInput.value = '';
   if (flashPreview) flashPreview.innerHTML = '';
-};
+}
+(window as any).clearFlashImage = clearFlashImage;
 
 // Função de publicação da oferta relâmpago
 async function publishFlashDeal() {
   try {
-    const title = document.getElementById('flash-title').value;
-    const price = document.getElementById('flash-price').value;
-    const imageInput = document.getElementById('flash-image');
+    const title = getEl('flash-title').value;
+    const price = getEl('flash-price').value;
+    const imageInput = getEl('flash-image');
 
     if (!title || !price) {
       showNotification('error', 'Preencha título e preço!');
       return;
     }
 
-    if (!imageInput.files[0]) {
+    if (!imageInput.files?.[0]) {
       showNotification('error', 'Tire uma foto do produto!');
       return;
     }
@@ -1122,8 +1090,8 @@ async function publishFlashDeal() {
       showNotification('success', '⚡ Oferta Relâmpago publicada com sucesso!');
 
       // Limpar formulário
-      document.getElementById('flash-title').value = '';
-      document.getElementById('flash-price').value = '';
+      getEl('flash-title').value = '';
+      getEl('flash-price').value = '';
       clearFlashImage();
 
       // Voltar para as ofertas

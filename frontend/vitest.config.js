@@ -6,7 +6,11 @@ import { defineConfig } from 'vitest/config';
 // specific function a given test file is actually exercising.
 export default defineConfig({
   test: {
-    include: ['public/js/**/*.test.js', 'merchant/js/**/*.test.js', 'shared/**/*.test.js'],
+    include: [
+      'public/js/**/*.test.{js,ts}',
+      'merchant/js/**/*.test.{js,ts}',
+      'shared/**/*.test.{js,ts}',
+    ],
     environment: 'jsdom',
   },
 });

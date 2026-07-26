@@ -8,11 +8,12 @@ import {
 } from 'firebase/firestore';
 import { geohashQueryBounds } from 'geofire-common';
 import { isDealAvailable, isDealExpired } from '../../shared/domain/deal.js';
+import type { Deal } from '../../shared/types.js';
 
 // Configurações do Radar
-const getPreferredRadius = () => parseInt(localStorage.getItem('userRadius')) || 10;
+const getPreferredRadius = () => parseInt(localStorage.getItem('userRadius') || '') || 10;
 
-const CATEGORY_EMOJIS = {
+const CATEGORY_EMOJIS: Record<string, string> = {
   adega: '🍷',
   butcher: '🥩',
   automotive: '🚗',
@@ -39,7 +40,7 @@ const CATEGORY_EMOJIS = {
   other: '✨'
 };
 
-const CATEGORY_LABELS = {
+const CATEGORY_LABELS: Record<string, string> = {
   adega: 'Adega',
   butcher: 'Açougue',
   automotive: 'Automotivo',
@@ -70,7 +71,7 @@ const ALL_IDS = Object.keys(CATEGORY_LABELS);
 
 const TIMEOUT_GPS = 5000; // 5 segundos para desistir do GPS
 
-let allDeals = []; // Armazena todas as ofertas carregadas
+let allDeals: Deal[] = []; // Armazena todas as ofertas carregadas
 let currentFilter = 'all'; // Filtro atual
 
 export async function loadNearbyDeals() {
@@ -118,10 +119,10 @@ export async function loadNearbyDeals() {
         const dataA = a.createdAt?.toDate?.() || new Date(0);
         const dataB = b.createdAt?.toDate?.() || new Date(0);
 
-        if (dataB - dataA !== 0) {
-          return dataB - dataA;
+        if (dataB.getTime() - dataA.getTime() !== 0) {
+          return dataB.getTime() - dataA.getTime();
         }
-        return a.distance - b.distance;
+        return (a.distance ?? 0) - (b.distance ?? 0);
       });
     }
 
@@ -143,13 +144,13 @@ export async function loadNearbyDeals() {
 }
 
 // Modifique a função renderDeals para mostrar o estado do filtro
-export function renderDeals(deals) {
+export function renderDeals(deals: Deal[]) {
   const dealsList = document.getElementById('deals-list');
   if (!dealsList) return;
 
   const savedInterests = JSON.parse(localStorage.getItem('userInterests') || '[]');
   const hasFilters = savedInterests.length > 0;
-  const filterSelect = document.getElementById('category-filter');
+  const filterSelect = document.getElementById('category-filter') as HTMLSelectElement | null;
   const currentCategory = filterSelect ? filterSelect.options[filterSelect.selectedIndex].text : '';
 
   if (!deals || !Array.isArray(deals) || deals.length === 0) {
@@ -190,8 +191,8 @@ export function renderDeals(deals) {
   });
 }
 
-function extractUniqueCategories(deals) {
-  const categories = new Set();
+function extractUniqueCategories(deals: Deal[]): string[] {
+  const categories = new Set<string>();
   deals.forEach(deal => {
     if (deal.category && CATEGORY_LABELS[deal.category]) {
       categories.add(deal.category);
@@ -202,8 +203,8 @@ function extractUniqueCategories(deals) {
   );
 }
 
-function populateCategoryFilter(deals) {
-  const filterSelect = document.getElementById('category-filter');
+function populateCategoryFilter(deals: Deal[]) {
+  const filterSelect = document.getElementById('category-filter') as HTMLSelectElement | null;
   if (!filterSelect) return;
 
   // Limpa opções existentes (exceto "TODAS")
@@ -223,7 +224,7 @@ function populateCategoryFilter(deals) {
 
   // Adiciona evento de mudança
   filterSelect.addEventListener('change', (e) => {
-    currentFilter = e.target.value;
+    currentFilter = (e.target as HTMLSelectElement).value;
     applyFilters();
   });
 }
@@ -243,7 +244,7 @@ function applyFilters() {
 
 
 // Helper: Promessa de Localização com Timeout
-function getCurrentLocation(timeout) {
+function getCurrentLocation(timeout: number): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, {
       enableHighAccuracy: true,
@@ -254,7 +255,7 @@ function getCurrentLocation(timeout) {
 }
 
 // Fórmula de Haversine para precisão matemática
-export function calcularDistancia(lat1, lon1, lat2, lon2) {
+export function calcularDistancia(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Raio da Terra em km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -271,7 +272,7 @@ export function calcularDistancia(lat1, lon1, lat2, lon2) {
  * (necessário porque uma busca por raio não mapeia pra um único prefixo de geohash contíguo);
  * os resultados são mesclados por id, já que os ranges podem se sobrepor.
  */
-async function fetchDealsNearby(center, radiusKm) {
+async function fetchDealsNearby(center: [number, number], radiusKm: number): Promise<Deal[]> {
   const bounds = geohashQueryBounds(center, radiusKm * 1000);
   const dealsRef = collection(db, 'deals');
 
@@ -287,21 +288,21 @@ async function fetchDealsNearby(center, radiusKm) {
     )
   );
 
-  const dealsById = new Map();
+  const dealsById = new Map<string, Deal>();
   for (const snapshot of snapshots) {
     for (const doc of snapshot.docs) {
-      dealsById.set(doc.id, { id: doc.id, ...doc.data() });
+      dealsById.set(doc.id, { id: doc.id, ...doc.data() } as Deal);
     }
   }
   return [...dealsById.values()];
 }
 
 /** Fallback usado quando não há posição do usuário (GPS indisponível/negado): sem filtro geográfico. */
-async function fetchAllActiveDeals() {
+async function fetchAllActiveDeals(): Promise<Deal[]> {
   const dealsRef = collection(db, 'deals');
   const q = query(dealsRef, where('status', '==', 'active'), where('stockAvailable', '>', 0));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
 }
 
 /**
@@ -310,12 +311,12 @@ async function fetchAllActiveDeals() {
  * de um círculo exato) e porque o filtro de estoque não pode mais rodar no Firestore junto com o
  * range query de geohash (só é permitido um campo com filtro de desigualdade por query).
  */
-export function filterDealsWithinRadius(deals, center, maxRadiusKm) {
+export function filterDealsWithinRadius(deals: Deal[], center: [number, number], maxRadiusKm: number): Deal[] {
   const [centerLat, centerLon] = center;
 
   return deals
     .filter(deal => isDealAvailable(deal))
-    .map(deal => {
+    .map((deal): Deal | null => {
       const loc = deal.merchantLocation || deal.location;
       if (!loc || !loc.latitude) return null;
 
@@ -326,18 +327,18 @@ export function filterDealsWithinRadius(deals, center, maxRadiusKm) {
         distanceText: dist < 1 ? `${(dist * 1000).toFixed(0)}m` : `${dist.toFixed(1)}km`
       };
     })
-    .filter(deal => deal !== null && deal.distance <= maxRadiusKm);
+    .filter((deal): deal is Deal => deal !== null && deal.distance! <= maxRadiusKm);
 }
 
 // Pequena função auxiliar para o botão de limpar filtros funcionar
-window.clearFilters = function () {
+(window as any).clearFilters = function () {
   localStorage.removeItem('userInterests');
   location.reload(); // Recarrega a página limpa
 }
 /**
  * Criar card de oferta
  */
-function createDealCard(deal) {
+function createDealCard(deal: Deal) {
   const card = document.createElement('div');
   card.className = 'deal-card';
 
@@ -392,7 +393,7 @@ function createDealCard(deal) {
 /**
  * Mostrar modal com detalhes da oferta
  */
-function showDealModal(deal) {
+function showDealModal(deal: Deal) {
   const modal = document.getElementById('deal-modal');
   const details = document.getElementById('deal-details');
 
@@ -437,9 +438,9 @@ function showDealModal(deal) {
 
   const generateBtn = document.getElementById('generate-coupon-btn');
   if (generateBtn) {
-    generateBtn.onclick = () => window.generateCouponFromModal(deal.id);
+    generateBtn.onclick = () => (window as any).generateCouponFromModal(deal.id);
   }
 }
 
 // Exportar para uso global
-window.showDealModal = showDealModal;
+(window as any).showDealModal = showDealModal;

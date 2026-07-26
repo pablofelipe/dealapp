@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import type { Coupon } from '../types.js';
 import { getCouponStatus } from './coupon.js';
 
-function makeCoupon(overrides = {}) {
+function makeCoupon(overrides: Partial<Coupon> = {}): Coupon {
   return {
     status: 'pending',
     expiresAt: { toDate: () => new Date('2030-01-01T00:00:00Z') },
     ...overrides,
-  };
+  } as Coupon;
 }
 
 describe('getCouponStatus', () => {
