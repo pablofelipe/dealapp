@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('./firebase-config.js', () => ({ db: {} }));
 
 import type { Deal } from '../../shared/types.js';
-import { calcularDistancia, filterDealsWithinRadius } from './deals.js';
+import { calcularDistancia, createDealCard, filterDealsWithinRadius } from './deals.js';
 
 describe('calcularDistancia', () => {
   it('retorna 0 para o mesmo ponto', () => {
@@ -58,5 +58,55 @@ describe('filterDealsWithinRadius', () => {
     expect(result).toHaveLength(1);
     expect(result[0].distance).toBeGreaterThan(0);
     expect(result[0].distanceText).toMatch(/km|m$/);
+  });
+});
+
+describe('createDealCard', () => {
+  function makeDeal(overrides: Partial<Deal> = {}): Deal {
+    return {
+      id: 'deal-1',
+      title: 'Combo Família',
+      description: 'Dois quilos de picanha',
+      originalPrice: 100,
+      dealPrice: 70,
+      discount: 30,
+      stockAvailable: 5,
+      category: 'butcher',
+      merchantLocation: { latitude: -23.56, longitude: -46.65, neighborhood: 'Pinheiros' },
+      ...overrides,
+    } as Deal;
+  }
+
+  it('renderiza um card com a classe deal-card e os dados principais da oferta', () => {
+    const card = createDealCard(makeDeal());
+    expect(card.className).toBe('deal-card');
+    expect(card.innerHTML).toContain('Combo Família');
+    expect(card.innerHTML).toContain('Dois quilos de picanha');
+    expect(card.innerHTML).toContain('R$ 100.00');
+    expect(card.innerHTML).toContain('R$ 70.00');
+    expect(card.innerHTML).toContain('30% OFF');
+    expect(card.innerHTML).toContain('Açougue'); // CATEGORY_LABELS['butcher']
+    expect(card.innerHTML).toContain('Pinheiros');
+  });
+
+  it('mostra a quantidade em estoque quando não é ilimitado', () => {
+    const card = createDealCard(makeDeal({ stockAvailable: 3, isUnlimited: false }));
+    expect(card.innerHTML).toContain('3 disponíveis');
+    expect(card.innerHTML).not.toContain('Estoque Ilimitado');
+  });
+
+  it('mostra "Estoque Ilimitado" quando isUnlimited é true', () => {
+    const card = createDealCard(makeDeal({ isUnlimited: true }));
+    expect(card.innerHTML).toContain('Estoque Ilimitado');
+  });
+
+  it('usa "Localização não definida" quando não há distanceText', () => {
+    const card = createDealCard(makeDeal({ distanceText: undefined }));
+    expect(card.innerHTML).toContain('Localização não definida');
+  });
+
+  it('usa o distanceText quando presente', () => {
+    const card = createDealCard(makeDeal({ distanceText: '850m' }));
+    expect(card.innerHTML).toContain('850m');
   });
 });

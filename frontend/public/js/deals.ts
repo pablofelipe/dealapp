@@ -338,7 +338,7 @@ export function filterDealsWithinRadius(deals: Deal[], center: [number, number],
 /**
  * Criar card de oferta
  */
-function createDealCard(deal: Deal) {
+export function createDealCard(deal: Deal) {
   const card = document.createElement('div');
   card.className = 'deal-card';
 

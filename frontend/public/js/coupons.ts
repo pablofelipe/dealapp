@@ -129,7 +129,7 @@ function renderCoupons(coupons) {
 /**
  * Cria o card visual com foco na urgência e localização
  */
-function createCouponCard(coupon) {
+export function createCouponCard(coupon) {
   const deal = coupon.dealInfo;
   const status = getCouponStatus(coupon);
 

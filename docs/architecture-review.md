@@ -1,8 +1,7 @@
 # Architecture Review — Radar da Oferta (dealapp)
 
-Status: **findings 1-4 implemented** (server-authoritative coupon/stock flow, domain layer in
-Cloud Functions, Firestore config cleanup — see the note at the top of each finding below and
-`functions/src/`). **Findings 5-8 remain open.**
+Status: **all 8 findings fixed** — see the note at the top of each finding below and the roadmap at
+the end of this document for what changed and where.
 Scope: `public/` (customer PWA), `merchant/` (merchant panel), `functions/` (Cloud Functions),
 Firestore/Storage security configuration, CI.
 
@@ -21,7 +20,7 @@ visible from reading any single file in isolation.
 | 4 | Domain model is anemic; business rules live inline in DOM-manipulating code | P1 | DDD violation | **Fixed** (`functions/src/domain/`; client-side duplication consolidated into `frontend/shared/domain/`, see roadmap step 6) |
 | 5 | Both frontends have no build pipeline, no TypeScript, no test runner | P1 | TDD enabler / foundational | **Fixed** |
 | 6 | Geo-proximity data (`geohash`) is written but never queried; declared dependency unused | P2 | Dead data modeling | **Fixed** |
-| 7 | No test suite anywhere in the repository | P1 | TDD enabler | **Fixed** for `functions/` and pure logic in both frontends; component/DOM testing open |
+| 7 | No test suite anywhere in the repository | P1 | TDD enabler | **Fixed** |
 | 8 | Storage rules allow any authenticated user to write to any path | P2 | Security hardening | **Fixed** |
 
 Findings 1 and 2 are two faces of the same problem and should be fixed together: the codebase already
@@ -283,9 +282,12 @@ either alternative.
 
 ## Finding 7 — No test suite
 
-> **Resolved for `functions/`** (Vitest, unit + Firestore Emulator integration tests) and **for pure
-> business logic in both frontends** (Vitest + jsdom, `frontend/{public,merchant}/js/*.test.js`) —
-> component/DOM-interaction testing remains open, as a separate, later step.
+> **Resolved.** `functions/` has Vitest unit + Firestore Emulator integration tests; both frontends
+> have Vitest + jsdom tests for pure business logic (`frontend/shared/domain/*.test.ts`,
+> `frontend/{public,merchant}/js/*.test.ts`) and for the pure card-rendering functions
+> (`createDealCard`, `createCouponCard`, `createDealItem`) — each already returned a detached DOM
+> node built with no external `document.getElementById` lookups, so no testability refactor was
+> needed, just exporting them and asserting on the returned element's `className`/`innerHTML`.
 
 **Where:** none of the three `package.json` files (root, `functions/`) declare a test runner or contain
 test files.
@@ -324,9 +326,9 @@ path in the bucket.
 
 ## Roadmap
 
-Steps 1-3, 5-7 below are **done** and deployed to production (`deal-application`). Step 5 now covers
-both the build pipeline and the TypeScript conversion (see below) — the two were deliberately sequenced
-as separate changes but are both complete. Only the component/DOM-testing half of step 4 remains open.
+All 7 steps below are **done** and deployed to production (`deal-application`). Step 5 covers both the
+build pipeline and the TypeScript conversion, sequenced as separate changes; step 4 now also covers
+component/DOM-interaction testing for the pure card-rendering functions.
 
 1. ~~**P0 — Server-authoritative coupon/stock flow.**~~ **Done.** New implementation in
    `functions/src/{domain,application,callable}/`, `functions/index.js` wires in the compiled
@@ -338,11 +340,13 @@ as separate changes but are both complete. Only the component/DOM-testing half o
 3. ~~**P1 — Domain layer in Functions.**~~ **Done**, scoped to the coupon/deal invariants
    (`functions/src/domain/`). `createDeal`/`updateStock` were dropped rather than ported (see
    Finding 2) — revisit separately if server-authoritative deal creation becomes a priority.
-4. ~~**P1 — Test tooling.**~~ **Done** for `functions/` (Vitest, unit + Firestore Emulator
-   integration tests) and for pure business logic in both frontends (Vitest + jsdom,
-   `frontend/{public,merchant}/js/*.test.js`). **Still open:** component/DOM-interaction testing for
-   either frontend (e.g. rendering, form flows) — a separate, larger step than unit-testing already-pure
-   functions.
+4. ~~**P1 — Test tooling.**~~ **Done.** `functions/` has Vitest unit + Firestore Emulator integration
+   tests; both frontends have Vitest + jsdom tests for pure business logic
+   (`frontend/{public,merchant}/js/*.test.ts`) and for component rendering — `createDealCard`,
+   `createCouponCard`, `createDealItem` were already pure (build and return a detached DOM node, no
+   `document.getElementById` reads), so they only needed to be exported and asserted on directly, no
+   testability refactor required. Full page/flow simulation (multi-step forms, auth-gated views)
+   remains out of scope — not identified as a real risk area, unlike the rendering functions.
 5. ~~**P1 — Build pipeline for both frontends.**~~ **Done.** Fix for Finding 5: `frontend/` is now a
    Vite project (source separate from `dist/` build output), covering the customer PWA, merchant panel,
    and landing page, with CI building it before deploy. The bundler migration and the TypeScript

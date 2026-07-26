@@ -131,7 +131,7 @@ function renderMerchantDeals(deals) {
   });
 }
 
-function createDealItem(deal) {
+export function createDealItem(deal) {
   const item = document.createElement('div');
   item.className = 'deal-item';
 
