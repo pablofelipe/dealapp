@@ -18,6 +18,14 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+        # Required by the Firestore/Storage emulators used in "Test functions" (test:emulator) -
+        # firebase-tools no longer supports Java < 21, and ubuntu-latest's default JDK is older.
+
       - name: Install dependencies (functions)
         run: |
           cd functions
