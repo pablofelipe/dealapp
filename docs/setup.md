@@ -285,17 +285,19 @@ hosting + functions) first, or use the production URL if it's already deployed.
 
 Real problems encountered during this project's development, not hypothetical ones.
 
-**Symptom:** `firebase emulators:start` comes up fine, but coupons generated locally never show up
-in the Firestore Emulator UI, and the merchant panel can't find the deal when redeeming.
+**Symptom (fixed):** `firebase emulators:start` came up fine, but coupons generated locally never
+showed up in the Firestore Emulator UI, and the merchant panel couldn't find the deal when
+redeeming.
 **Cause:** `generateCoupon`/`redeemCoupon` are called via `httpsCallable`, and neither
-`firebase-config.ts` calls `connectFunctionsEmulator`. The calls go to the Cloud Functions already
-deployed to the real project, which read/write the production Firestore, not the local emulator.
-**How to identify it:** the deal created locally (in the emulator) simply doesn't exist from the real
-function's point of view, which responds with `DEAL_NOT_FOUND`.
-**Fix:** to test the coupon flow end to end against the emulator, use `firebase functions:shell`
-(calls the functions locally) instead of the app running in the browser, or add
-`connectFunctionsEmulator(functions, 'localhost', 5001)` to both `firebase-config.ts` files while
-testing locally.
+`firebase-config.ts` called `connectFunctionsEmulator`. The calls went to the Cloud Functions
+already deployed to the real project, which read/write the production Firestore, not the local
+emulator.
+**How it was identified:** the deal created locally (in the emulator) simply didn't exist from the
+real function's point of view, which responded with `DEAL_NOT_FOUND`.
+**Fix applied:** both `firebase-config.ts` files now call `connectFunctionsEmulator(functions,
+'localhost', 5001)` inside the existing localhost check, alongside Firestore/Auth/Storage. Local
+`generateCoupon`/`redeemCoupon` calls now hit the emulator like everything else. `firebase
+functions:shell` remains an option too, for calling functions without the browser app at all.
 
 **Symptom:** the Vite build fails with `Failed to resolve import "../../shared/domain/deal.js" from
 "merchant/js/deals.js"` (during a `.js`-to-`.ts` migration).
@@ -331,20 +333,24 @@ alias avoids having to track deprecations manually; (4) a stale secret — after
 take effect (Firebase warns "functions are using stale version of secret" on the prior deploy).
 **How to identify it:** `firebase functions:log` shows the specific error from the Gemini call.
 
-**Symptom:** the customer PWA's service worker (`frontend/static/public/sw.js`) fails silently on
-install, or never populates the expected cache.
-**Cause:** the file's `urlsToCache` array lists non-hashed paths (`/js/app.js`, `/css/styles.css`)
-that only existed before the Vite migration. The current build produces content-hashed filenames
-(`/assets/customer-<hash>.js`), so those literal paths no longer exist in `dist/`, and
+**Symptom (fixed):** the customer PWA's service worker (`frontend/static/public/sw.js`) failed
+silently on install, never populating the expected cache.
+**Cause:** the file's `urlsToCache` array listed non-hashed paths (`/js/app.js`, `/css/styles.css`)
+that only existed before the Vite migration. The build produces content-hashed filenames
+(`/assets/customer-<hash>.js`), so those literal paths no longer existed in `dist/`, and
 `cache.addAll()` rejects the whole promise if any URL in the list fails to fetch.
-**Status:** known limitation, not fixed as part of this documentation pass — this specific SW's app
-shell precache is effectively broken since the migration; real offline behavior today relies on the
-browser's HTTP cache for the hashed assets, not on this manual precache.
+**Fix applied:** the list now only contains the stable, unhashed assets actually served from
+`frontend/static/` (`/public/index.html`, `/public/manifest.json`, `/public/assets/icons/icon-192.png`).
+**Still worth knowing:** registering this service worker is currently commented out in
+`frontend/public/index.html` — only `firebase-messaging-sw.js` is registered — so there's no
+app-shell precache running in production either way today, independent of this fix.
 
-**Symptom:** ESLint (`npx eslint .` at the repo root) returns hundreds of errors in
+**Symptom (fixed):** ESLint (`npx eslint .` at the repo root) returned hundreds of errors in
 `functions/lib/*.js`.
-**Cause:** `eslint.config.mjs` at the root only covers `**/*.{js,mjs,cjs}` and doesn't ignore the
+**Cause:** `eslint.config.mjs` at the root only covered `**/*.{js,mjs,cjs}` and didn't ignore the
 compiled output directory `functions/lib/`. Additionally, after the full TypeScript migration of the
-frontend, **there is no lint configuration covering `.ts` files at all** in `frontend/` — the root
-ESLint config never touched those files, even before the migration.
-**Status:** known limitation. Running lint today doesn't validate the actual frontend source.
+frontend, there was no lint configuration covering `.ts` files at all in `frontend/`.
+**Fix applied:** the root config now ignores `functions/**` and `frontend/**` entirely, delegating
+to each package's own lint setup. `frontend/` got a new `eslint.config.js` (typescript-eslint,
+covering 100% of the TS source); `functions/.eslintrc.js` got a `lib/**` ignore plus a TypeScript
+override for `functions/src`. Both run in CI now (see the Commands section).

@@ -1,4 +1,4 @@
-import { db, auth } from './firebase-config.js';
+import { db, auth, functions } from './firebase-config.js';
 import {
   collection,
   doc,
@@ -7,7 +7,7 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { getCouponStatus } from '../../shared/domain/coupon.js';
 import type { Coupon } from '../../shared/types.js';
 
@@ -37,7 +37,6 @@ export async function generateCoupon(dealId: string) {
 
     console.log('🎫 Gerando cupom para deal:', dealId);
 
-    const functions = getFunctions();
     const call = httpsCallable<{ dealId: string }, { id: string; code: string }>(functions, 'generateCoupon');
     const result = await call({ dealId });
     const { id, code } = result.data;

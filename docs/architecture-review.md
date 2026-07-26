@@ -530,21 +530,20 @@ work, not as a promise any of it will happen.
 - Six Cloud Functions (`processOfferWithAI`, `manageSubscription`, `onNewDealNotify`,
   `testNotification`, `checkTopicStatus`, `debugTokenInfo`) remain plain JavaScript in
   `functions/index.js`, outside the TypeScript tree used by `generateCoupon`/`redeemCoupon` (Finding 2).
-- CI (`.github/workflows/firebase-hosting.yml`) builds and deploys Firestore rules + Hosting on every
-  push to `main` **without running either test suite** first — a red test suite does not block a
-  deploy today. Cloud Functions deploy is entirely manual, also without a test gate.
-- The root `eslint.config.mjs` only covers `**/*.{js,mjs,cjs}` and doesn't ignore the compiled
-  `functions/lib/` output (running it produces hundreds of false-positive errors on generated code).
-  There is no lint configuration at all for `frontend/`'s TypeScript source.
-- `frontend/static/public/manifest.json` has `start_url: "/"` with no `scope` — installing the
-  customer PWA and reopening it from the home screen lands on the landing page, not the deals feed
-  (the merchant manifest gets this right). See `docs/pwa-features.md`.
-- `frontend/static/public/sw.js`'s install-time precache list references pre-Vite, non-hashed asset
-  paths that no longer exist in the build output; the precache silently fails. See
-  `docs/pwa-features.md`.
-- Neither `frontend/public/js/firebase-config.ts` nor `frontend/merchant/js/firebase-config.ts` call
-  `connectFunctionsEmulator`, so `generateCoupon`/`redeemCoupon` invoked from a locally-running app
-  hit the real, deployed Cloud Functions and production Firestore, not the local emulator. See
-  `docs/setup.md` (Troubleshooting).
 - One Vite output chunk (`coupon-*.js`) is ~527KB, above Vite's 500KB warning threshold — no
   code-splitting has been applied.
+- `frontend/static/public/sw.js`'s registration is commented out in `frontend/public/index.html`
+  (only `firebase-messaging-sw.js` is registered) — there's no app-shell precache in production
+  today, by choice, not by bug. Its precache list was fixed regardless so the file is correct
+  whenever someone re-enables it. See `docs/pwa-features.md`.
+- Both manifests reference only a 192px icon — the 512px one Lighthouse's PWA audit expects was
+  never created (`icon-512.png` didn't exist anywhere in the repo despite being referenced; the
+  dead reference was removed rather than left broken). Needs a real design asset, not a code fix.
+
+Resolved since this section was last written (kept here briefly instead of silently vanishing):
+CI now lints and runs both test suites before build/deploy (a red suite blocks a deploy); the root
+`eslint.config.mjs` now delegates to `functions/`'s and `frontend/`'s own lint configs instead of
+scanning compiled output; `frontend/`'s TypeScript now has real lint coverage; the customer PWA
+manifest's `start_url`/`scope` are fixed; and both `firebase-config.ts` files call
+`connectFunctionsEmulator`, so local Cloud Functions calls now hit the emulator instead of
+production. See `docs/setup.md` for the updated Troubleshooting entries.

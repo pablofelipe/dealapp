@@ -1,10 +1,10 @@
 import { observeAuthState, loginWithGoogle, logout } from './auth.js';
 import { loadNearbyDeals } from './deals.js';
 import { loadMyCoupons } from './coupons.js';
-import { auth, db } from './firebase-config.js';
+import { auth, db, functions } from './firebase-config.js';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getMessaging, getToken } from 'firebase/messaging';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 
 // Elementos DOM
 const loading = document.getElementById('loading');
@@ -840,7 +840,6 @@ async function enableNotifications() {
 // Nova função simplificada para inscrever em tópicos
 async function subscribeToTopic(topic, token) {
   try {
-    const functions = getFunctions();
     const manageSub = httpsCallable(functions, 'manageSubscription');
 
     await manageSub({
@@ -860,7 +859,6 @@ async function subscribeToTopic(topic, token) {
 // Função para desinscrever
 async function unsubscribeFromTopic(topic, token) {
   try {
-    const functions = getFunctions();
     const manageSub = httpsCallable(functions, 'manageSubscription');
 
     await manageSub({

@@ -13,13 +13,16 @@ Two separate service workers, one per surface, registered from
 `frontend/vite.config.js`):
 
 - **Customer PWA** (`frontend/static/public/sw.js`): network-first with cache fallback, plus a
-  `push`/`notificationclick` handler that complements the messaging service worker below.
-  **Known limitation:** the `urlsToCache` list used in the `install` event still references
-  non-hashed paths (`/js/app.js`, `/css/styles.css`) that existed before the Vite migration. The
-  current build produces content-hashed filenames, so those paths no longer exist in `dist/`, and
-  `cache.addAll()` fails for the whole list. In practice, this service worker's app-shell precache
-  doesn't work today; basic offline behavior relies on the browser's HTTP cache for the hashed
-  assets. See `setup.md` (Troubleshooting).
+  `push`/`notificationclick` handler that complements the messaging service worker below. The
+  `urlsToCache` precache list used to reference non-hashed paths (`/js/app.js`, `/css/styles.css`)
+  left over from before the Vite migration, which no longer exist in `dist/` (Vite content-hashes
+  the JS/CSS bundle filenames) — `cache.addAll()` failed for the whole list. **Fixed**: the list now
+  only contains the stable, unhashed assets actually served from `frontend/static/`
+  (`/public/index.html`, `/public/manifest.json`, `/public/assets/icons/icon-192.png`).
+  **Note:** registering this service worker is currently commented out in `frontend/public/index.html`
+  (only `firebase-messaging-sw.js` is registered) — the precache fix keeps the file correct for
+  whenever it's re-enabled, but today it isn't active, so there's no app-shell precache in
+  production yet either way.
 - **Merchant panel** (`frontend/static/merchant/sw.js`): trivial — plain fetch passthrough, no
   caching strategy of its own.
 
@@ -40,11 +43,14 @@ Implemented end to end, not a roadmap item:
 
 - **Merchant panel** (`frontend/static/merchant/manifest.json`): `start_url` and `scope` are correct
   (`/merchant/index.html`, `/merchant/`).
-- **Customer PWA** (`frontend/static/public/manifest.json`): **known bug** — `start_url` is `"/"`
-  (the landing page) and `scope` isn't set. Installing the app from `/app` and later opening it from
-  the home screen icon lands on the landing page, not the deals feed. Fix pending: `start_url`
-  should be `/public/index.html` (or `/app`) with `scope: "/public/"` (or `/app`), mirroring what's
-  already correct in the merchant manifest.
+- **Customer PWA** (`frontend/static/public/manifest.json`): `start_url` used to be `"/"` (the
+  landing page) with no `scope` set — installing the app and later opening it from the home screen
+  icon landed on the landing page, not the deals feed. **Fixed**: `start_url` is now
+  `/public/index.html` with `scope: "/public/"`, mirroring the merchant manifest. Also fixed while
+  in there: both manifests referenced `icon-512.png`, which never existed in the repo (only
+  `icon-192.png` does) — removed the broken 512px entry from both manifests rather than leave a
+  dead reference. A real 512px icon asset would still be worth adding at some point (Lighthouse's
+  PWA audit expects one), but that requires a design asset this fix can't produce.
 
 ### Installing on a device
 
@@ -71,13 +77,15 @@ features:
   cache-first would make more sense for hashed static assets, stale-while-revalidate for dynamic
   data.
 - An explicit **app shell architecture** (separating shell cache from dynamic content cache).
-- Fixing the customer PWA's `sw.js` precache list for the post-Vite asset paths (see bug above).
-- Fixing the customer PWA manifest's `start_url`/`scope` (see bug above).
+- Re-enabling the customer PWA's `sw.js` registration (currently commented out — see above).
+- A real 512px icon asset (both manifests only reference the 192px one today).
 
 ## How to validate
 
-**Lighthouse:** DevTools → Lighthouse → "Progressive Web App" category → Analyze page load. Given
-the precache bug above, expect the "offline start" check to fail until it's fixed.
+**Lighthouse:** DevTools → Lighthouse → "Progressive Web App" category → Analyze page load. The
+manifest and precache-list bugs are fixed, but expect the maskable-icon/512px checks to still flag
+something until a real 512px icon is added, and offline-start checks won't reflect the precache fix
+until `sw.js`'s registration is re-enabled (see above).
 
 **Manual offline test:** DevTools → Network → Throttling → "Offline", then:
 - Interface loads from the browser cache ✅

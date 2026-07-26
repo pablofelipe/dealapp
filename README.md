@@ -110,13 +110,14 @@ cd functions && npm test     # Vitest: domain unit tests + Firestore Emulator in
 cd frontend && npm test      # Vitest + jsdom: domain logic + component rendering
 ```
 
-Neither suite currently runs in CI as a deploy gate (see [Architecture review](docs/architecture-review.md),
-known limitations) — both are run manually before a deploy today.
+Both suites (plus lint for each package) run in CI on every push to `main` and block the deploy
+steps if anything fails.
 
 ## Deploy
 
-Pushes to `main` build both packages and deploy Firestore rules + Hosting automatically through
-GitHub Actions (`.github/workflows/firebase-hosting.yml`). Cloud Functions deploy is manual:
+Pushes to `main` lint, build and test both packages, then deploy Firestore rules + Hosting
+automatically through GitHub Actions (`.github/workflows/firebase-hosting.yml`). Cloud Functions
+deploy is manual:
 
 ```bash
 firebase deploy --only functions

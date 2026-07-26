@@ -5,7 +5,7 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getMessaging } from 'firebase/messaging';
 
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEJpdEqFdVgSXd8fH7WYjEP2xCfPeGv2Q",
@@ -30,4 +30,5 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   connectFirestoreEmulator(db, 'localhost', 8080);
   connectStorageEmulator(storage, 'localhost', 9199);
   connectAuthEmulator(auth, "http://localhost:9099");
+  connectFunctionsEmulator(functions, 'localhost', 5001);
 }

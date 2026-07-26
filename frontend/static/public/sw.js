@@ -1,15 +1,10 @@
-const CACHE_NAME = 'dealapp-v2';
+const CACHE_NAME = 'dealapp-v3';
+// Vite hashes the JS/CSS bundle filenames on every build, so they can't be listed here - only
+// the unhashed static assets (served verbatim from frontend/static/) are safe to precache.
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/css/styles.css',
-  '/js/app.js',
-  '/js/firebase-config.js',
-  '/js/auth.js',
-  '/js/deals.js',
-  '/js/coupons.js',
-  '/assets/icons/icon-192.png',
-  '/assets/icons/icon-512.png'
+  '/public/index.html',
+  '/public/manifest.json',
+  '/public/assets/icons/icon-192.png'
 ];
 
 // Install - cache recursos
@@ -68,8 +63,8 @@ self.addEventListener('push', event => {
 
     const options = {
       body: data.body || 'Nova oferta disponível!',
-      icon: '/assets/icons/icon-192.png',
-      badge: '/assets/icons/icon-192.png',
+      icon: '/public/assets/icons/icon-192.png',
+      badge: '/public/assets/icons/icon-192.png',
       vibrate: [200, 100, 200],
       data: data.data || {}
     };

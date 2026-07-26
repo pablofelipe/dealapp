@@ -4,6 +4,7 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getMessaging } from 'firebase/messaging';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEJpdEqFdVgSXd8fH7WYjEP2xCfPeGv2Q",
@@ -20,6 +21,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 const storage = getStorage(app);
 export const messaging = getMessaging(app);
+export const functions = getFunctions(app);
 
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   console.log("🛠️ Rodando em ambiente local. Conectando aos Emuladores...");
@@ -27,4 +29,5 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   connectFirestoreEmulator(db, 'localhost', 8080);
   connectStorageEmulator(storage, 'localhost', 9199);
   connectAuthEmulator(auth, "http://localhost:9099");
+  connectFunctionsEmulator(functions, 'localhost', 5001);
 }

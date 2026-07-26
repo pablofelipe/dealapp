@@ -2,21 +2,16 @@
   "name": "Radar da Oferta - Ofertas do seu Bairro",
   "short_name": "RadarOfertas",
   "description": "Ofertas exclusivas para moradores do bairro",
-  "start_url": "/",
+  "start_url": "/public/index.html",
+  "scope": "/public/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2196F3",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/assets/icons/icon-192.png",
+      "src": "/public/assets/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/assets/icons/icon-512.png",
-      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
