@@ -48,9 +48,11 @@ Implemented end to end, not a roadmap item:
   icon landed on the landing page, not the deals feed. **Fixed**: `start_url` is now
   `/public/index.html` with `scope: "/public/"`, mirroring the merchant manifest. Also fixed while
   in there: both manifests referenced `icon-512.png`, which never existed in the repo (only
-  `icon-192.png` does) — removed the broken 512px entry from both manifests rather than leave a
-  dead reference. A real 512px icon asset would still be worth adding at some point (Lighthouse's
-  PWA audit expects one), but that requires a design asset this fix can't produce.
+  `icon-192.png` did) — first removed the dead reference, then generated a real
+  `icon-512.png` (`frontend/static/public/assets/icons/`) by upscaling
+  `ms-icon-310x310.png` (a leftover, never-referenced 310px asset from the same original
+  favicon-generator output — a smaller, sharper upscale than starting from the 192px icon) and
+  re-added the 512px entry to both manifests.
 
 ### Installing on a device
 
@@ -78,14 +80,12 @@ features:
   data.
 - An explicit **app shell architecture** (separating shell cache from dynamic content cache).
 - Re-enabling the customer PWA's `sw.js` registration (currently commented out — see above).
-- A real 512px icon asset (both manifests only reference the 192px one today).
 
 ## How to validate
 
 **Lighthouse:** DevTools → Lighthouse → "Progressive Web App" category → Analyze page load. The
-manifest and precache-list bugs are fixed, but expect the maskable-icon/512px checks to still flag
-something until a real 512px icon is added, and offline-start checks won't reflect the precache fix
-until `sw.js`'s registration is re-enabled (see above).
+manifest, precache-list and 512px-icon issues are fixed; offline-start checks still won't reflect
+the precache fix until `sw.js`'s registration is re-enabled (see above).
 
 **Manual offline test:** DevTools → Network → Throttling → "Offline", then:
 - Interface loads from the browser cache ✅
